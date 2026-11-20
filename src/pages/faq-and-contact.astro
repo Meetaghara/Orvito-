@@ -1,0 +1,122 @@
+---
+/**
+ * FAQ & Contact: every question (src/data/faq.ts) and the contact block (#contact, linked from the footer).
+ * Pending details (customer care name, registered address) show as marked placeholders.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import Accordion from '../components/Accordion.astro';
+import { faqs } from '../data/faq';
+import { business, isPending, social, whatsapp } from '../data/site';
+import { buildContactLink } from '../lib/whatsapp';
+
+const care = business.customerCare;
+const known = (v: string | null) => (isPending(v) ? null : v);
+---
+
+<BaseLayout
+  title="FAQ & Contact"
+  description="Answers about ordering ORVITO on WhatsApp, payment, delivery, allergens and storage, and how to reach us."
+>
+  <PageHero
+    eyebrow="FAQ & Contact"
+    title="Questions, answered."
+    italic="answered."
+    intro="How ordering works, delivery, allergens and storage. If your question isn't here, message us."
+  />
+
+  <section class="faq-all" aria-label="Frequently asked questions">
+    <div class="container">
+      <Accordion items={faqs} name="faq-all" />
+    </div>
+  </section>
+
+  <section class="contact section" id="contact" aria-labelledby="contact-title">
+    <div class="container contact__grid">
+      <div>
+        <span class="eyebrow" data-reveal>Contact</span>
+        <h2 id="contact-title" class="contact__title" data-split>Talk to us on WhatsApp.</h2>
+        <p class="contact__intro" data-reveal>
+          The quickest way to reach us. We reply {whatsapp.replyHours}.
+        </p>
+        <div class="contact__actions" data-reveal>
+          <a
+            class="btn btn--solid btn--lg"
+            href={buildContactLink()}
+            target="_blank"
+            rel="noopener"
+            data-cursor="Chat"
+          >
+            Message us on WhatsApp<span class="visually-hidden"> (opens WhatsApp)</span>
+          </a>
+        </div>
+      </div>
+
+      <dl class="contact__list" data-stagger>
+        <div class="contact__row" data-stagger-item>
+          <dt>WhatsApp</dt>
+          <dd><a href={buildContactLink()} target="_blank" rel="noopener">{whatsapp.display}</a></dd>
+        </div>
+        <div class="contact__row" data-stagger-item>
+          <dt>Email</dt>
+          <dd><a href={`mailto:${business.email}`}>{business.email}</a></dd>
+        </div>
+        <div class="contact__row" data-stagger-item>
+          <dt>Instagram</dt>
+          <dd><a href={social.instagram} target="_blank" rel="noopener">{social.instagramHandle}</a></dd>
+        </div>
+        <div class="contact__row" data-stagger-item>
+          <dt>Customer care</dt>
+          <dd>
+            {known(care.name) ?? <span class="pending">[Customer care name]</span>}
+            <br />
+            <a href={`tel:${care.phone.replace(/\s/g, '')}`}>{care.phone}</a>
+          </dd>
+        </div>
+        <div class="contact__row" data-stagger-item>
+          <dt>Registered office</dt>
+          <dd>
+            {known(business.legalName) ?? <span class="pending">[Registered business name]</span>}
+            <br />
+            {known(business.address) ?? <span class="pending">[Registered business address]</span>}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .faq-all { padding-bottom: var(--section-space); }
+  .faq-all .container { max-width: 60rem; }
+
+  .contact { border-top: var(--border); }
+  .contact__grid { display: grid; gap: var(--space-8); }
+  @media (min-width: 64rem) {
+    .contact__grid { grid-template-columns: 1fr 1fr; align-items: start; gap: var(--space-10); }
+  }
+  .contact .eyebrow { margin-bottom: var(--space-4); }
+  .contact__title { font-size: var(--text-h2); max-width: 14ch; }
+  .contact__intro { margin-top: var(--space-5); max-width: 32rem; }
+  .contact__actions { margin-top: var(--space-6); }
+
+  .contact__list { border-top: var(--border); }
+  .contact__row {
+    display: grid;
+    grid-template-columns: minmax(8rem, 11rem) 1fr;
+    gap: var(--space-4);
+    padding: var(--space-4) 0;
+    border-bottom: var(--border);
+  }
+  .contact__row dt { font-family: var(--font-mono); font-size: var(--text-label); letter-spacing: var(--tracking-mono); text-transform: uppercase; color: var(--color-text-muted); padding-top: 0.2em; }
+  .contact__row dd { color: var(--color-white); }
+  .contact__row a {
+    color: var(--color-white);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    text-decoration-color: rgb(255 255 255 / 0.35);
+  }
+  @media (max-width: 30rem) {
+    .contact__row { grid-template-columns: 1fr; gap: var(--space-1); }
+  }
+</style>

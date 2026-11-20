@@ -1,0 +1,369 @@
+---
+/**
+ * Site navigation.
+ * Desktop (>= 900px): wordmark, four links, honey "Order on WhatsApp" button.
+ * Mobile: wordmark + menu button (full-screen menu) and a sticky order button at the bottom.
+ * Lives in BaseLayout's "fixed" slot, outside the ScrollSmoother wrapper.
+ */
+import Wordmark from './Wordmark.astro';
+import OrderButton from './OrderButton.astro';
+import { navLinks, productFacts, whatsapp, isPending } from '../data/site';
+
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isCurrent = (href: string) => path === href;
+const replyHours = isPending(whatsapp.replyHours) ? null : whatsapp.replyHours;
+---
+
+<header class="site-header" data-site-header>
+  <div class="site-header__bar container">
+    <a class="site-header__logo" href="/" aria-label="ORVITO home">
+      <Wordmark />
+    </a>
+
+    <nav class="site-nav" aria-label="Main">
+      <ul class="site-nav__list" role="list">
+        {
+          navLinks.map((link) => (
+            <li>
+              <a class="site-nav__link" href={link.href} aria-current={isCurrent(link.href) ? 'page' : undefined}>
+                {link.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <OrderButton size="sm" class="site-nav__cta" />
+    </nav>
+
+    <button
+      class="menu-toggle"
+      type="button"
+      aria-expanded="false"
+      aria-controls="mobile-menu"
+      data-menu-toggle
+    >
+      <span class="visually-hidden" data-menu-label>Open menu</span>
+      <span class="menu-toggle__line menu-toggle__line--top" aria-hidden="true"></span>
+      <span class="menu-toggle__line menu-toggle__line--bottom" aria-hidden="true"></span>
+    </button>
+  </div>
+</header>
+
+<div class="mobile-menu" id="mobile-menu" data-mobile-menu inert>
+  <nav class="mobile-menu__inner container" aria-label="Main menu" tabindex="-1">
+    <ul class="mobile-menu__list" role="list">
+      {
+        navLinks.map((link) => (
+          <li class="mobile-menu__item">
+            <a class="mobile-menu__link" href={link.href} aria-current={isCurrent(link.href) ? 'page' : undefined}>
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <div class="mobile-menu__footer mobile-menu__item">
+      <OrderButton size="lg" class="mobile-menu__cta" />
+      <p class="mobile-menu__note">
+        {productFacts.allergens}
+        {replyHours && <><br />Replies {replyHours}</>}
+      </p>
+    </div>
+  </nav>
+</div>
+
+<div class="sticky-cta" data-sticky-cta>
+  <OrderButton size="lg" class="sticky-cta__btn" />
+</div>
+
+<script>
+  import { getSmoother } from '../scripts/motion';
+
+  let cleanup: (() => void) | null = null;
+
+  function setup() {
+    cleanup?.();
+    const header = document.querySelector<HTMLElement>('[data-site-header]');
+    const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+    const menu = document.querySelector<HTMLElement>('[data-mobile-menu]');
+    const label = document.querySelector<HTMLElement>('[data-menu-label]');
+    if (!header || !toggle || !menu || !label) return;
+
+    const outside = () =>
+      [document.querySelector('#smooth-wrapper'), document.querySelector('[data-sticky-cta]')].filter(
+        Boolean
+      ) as HTMLElement[];
+
+    // Solid background once the page has scrolled.
+    const onScroll = () => header.classList.toggle('is-scrolled', window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    const setOpen = (open: boolean, { restoreFocus = true } = {}) => {
+      if (open === menu.classList.contains('is-open')) return;
+      menu.classList.toggle('is-open', open);
+      header.classList.toggle('is-menu-open', open);
+      document.documentElement.classList.toggle('menu-open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+      label.textContent = open ? 'Close menu' : 'Open menu';
+      menu.inert = !open;
+      outside().forEach((el) => (el.inert = open));
+      getSmoother()?.paused(open);
+      // Move focus into the menu (the container, so no ring flashes on a tap; Tab reaches the links).
+      if (open) menu.querySelector<HTMLElement>('nav')?.focus({ preventScroll: true });
+      else if (restoreFocus) toggle.focus({ preventScroll: true });
+    };
+
+    const onToggle = () => setOpen(!menu.classList.contains('is-open'));
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && menu.classList.contains('is-open')) setOpen(false);
+    };
+    const onMenuClick = (e: Event) => {
+      if ((e.target as Element).closest('a')) setOpen(false, { restoreFocus: false });
+    };
+    // Close if the screen grows past the mobile breakpoint while open.
+    const desktop = window.matchMedia('(min-width: 56.25rem)');
+    const onBreakpoint = () => desktop.matches && setOpen(false, { restoreFocus: false });
+
+    toggle.addEventListener('click', onToggle);
+    menu.addEventListener('click', onMenuClick);
+    document.addEventListener('keydown', onKey);
+    desktop.addEventListener('change', onBreakpoint);
+
+    cleanup = () => {
+      setOpen(false, { restoreFocus: false });
+      window.removeEventListener('scroll', onScroll);
+      toggle.removeEventListener('click', onToggle);
+      menu.removeEventListener('click', onMenuClick);
+      document.removeEventListener('keydown', onKey);
+      desktop.removeEventListener('change', onBreakpoint);
+      cleanup = null;
+    };
+  }
+
+  document.addEventListener('astro:page-load', setup);
+  document.addEventListener('astro:before-swap', () => cleanup?.());
+</script>
+
+<style>
+  /* ---------- Header bar ---------- */
+  .site-header {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: var(--z-nav);
+    height: var(--nav-height);
+    padding-top: env(safe-area-inset-top);
+    box-sizing: content-box;
+  }
+  /* Solid background fades in after scrolling (opacity only) */
+  .site-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--color-bg);
+    border-bottom: var(--border);
+    opacity: 0;
+    transition: opacity var(--duration-base) ease;
+  }
+  .site-header.is-scrolled::before { opacity: 1; }
+  .site-header.is-menu-open::before { opacity: 0; }
+
+  .site-header__bar {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-6);
+  }
+  .site-header__logo {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-size: 1.625rem; /* 26px */
+  }
+
+  /* ---------- Desktop links ---------- */
+  .site-nav { display: none; }
+
+  @media (min-width: 56.25rem) {
+    .site-nav {
+      display: flex;
+      align-items: center;
+      gap: clamp(1.5rem, 3vw, 3rem);
+    }
+    .site-nav__list {
+      display: flex;
+      align-items: center;
+      gap: clamp(1.25rem, 2.4vw, 2.5rem);
+      padding: 0;
+      list-style: none;
+    }
+  }
+  .site-nav__link {
+    position: relative;
+    display: inline-block;
+    padding-block: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-regular);
+    color: var(--color-text);
+  }
+  /* Underline draws from the left (transform only) */
+  .site-nav__link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0.2rem;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 200ms var(--ease-out);
+  }
+  .site-nav__link[aria-current='page'] { color: var(--color-white); }
+  .site-nav__link[aria-current='page']::after { transform: scaleX(1); }
+  @media (hover: hover) and (pointer: fine) {
+    .site-nav__link:hover { color: var(--color-white); }
+    .site-nav__link:hover::after { transform: scaleX(1); }
+  }
+
+  /* ---------- Menu toggle (mobile) ---------- */
+  .menu-toggle {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    margin-right: -10px;
+    display: grid;
+    place-items: center;
+    color: var(--color-white);
+    touch-action: manipulation;
+  }
+  .menu-toggle__line {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: calc(50% - 0.75px);
+    height: 1.5px;
+    background: currentColor;
+    border-radius: 1px;
+    transition: transform 200ms var(--ease-out);
+  }
+  .menu-toggle__line--top { transform: translateY(-4px); }
+  .menu-toggle__line--bottom { transform: translateY(4px); }
+  .is-menu-open .menu-toggle__line--top { transform: rotate(45deg); }
+  .is-menu-open .menu-toggle__line--bottom { transform: rotate(-45deg); }
+
+  @media (min-width: 56.25rem) {
+    .menu-toggle { display: none; }
+  }
+
+  /* ---------- Full-screen mobile menu ---------- */
+  .mobile-menu {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-menu);
+    background: var(--color-bg);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    opacity: 0;
+    visibility: hidden;
+    /* Closing: quick, no stagger */
+    transition:
+      opacity 180ms var(--ease-out),
+      visibility 0s linear 180ms;
+  }
+  .mobile-menu.is-open {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity var(--duration-base) var(--ease-out),
+      visibility 0s;
+  }
+  .mobile-menu__inner {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--space-8);
+    padding-top: calc(var(--nav-height) + env(safe-area-inset-top) + var(--space-7));
+    padding-bottom: calc(var(--space-7) + env(safe-area-inset-bottom));
+  }
+  .mobile-menu__inner:focus { outline: none; }
+  .mobile-menu__list {
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: var(--space-3);
+  }
+  .mobile-menu__link {
+    display: block;
+    padding-block: var(--space-2);
+    font-family: var(--font-serif);
+    font-size: clamp(2rem, 1.6rem + 2vw, 2.75rem);
+    line-height: 1.15;
+    color: var(--color-white);
+  }
+  .mobile-menu__link[aria-current='page'] { font-style: italic; }
+  .mobile-menu__footer { display: grid; gap: var(--space-4); }
+  .mobile-menu__note {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
+  /* Items rise in one after another on open */
+  .mobile-menu__item {
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+      opacity 180ms var(--ease-out),
+      transform 180ms var(--ease-out);
+  }
+  .mobile-menu.is-open .mobile-menu__item {
+    opacity: 1;
+    transform: none;
+    transition-duration: 320ms;
+  }
+  .mobile-menu.is-open .mobile-menu__item:nth-child(1) { transition-delay: 40ms; }
+  .mobile-menu.is-open .mobile-menu__item:nth-child(2) { transition-delay: 80ms; }
+  .mobile-menu.is-open .mobile-menu__item:nth-child(3) { transition-delay: 120ms; }
+  .mobile-menu.is-open .mobile-menu__item:nth-child(4) { transition-delay: 160ms; }
+  .mobile-menu.is-open .mobile-menu__footer.mobile-menu__item { transition-delay: 200ms; }
+
+  @media (min-width: 56.25rem) {
+    .mobile-menu { display: none; }
+  }
+
+  /* ---------- Sticky order button (mobile) ---------- */
+  .sticky-cta {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: var(--z-sticky-cta);
+    padding: var(--space-3) var(--gutter) calc(var(--space-3) + env(safe-area-inset-bottom));
+    background: rgb(11 11 11 / 0.92);
+    border-top: var(--border);
+  }
+  .sticky-cta :global(.sticky-cta__btn) { width: 100%; }
+  @media (min-width: 56.25rem) {
+    .sticky-cta { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-menu__item,
+    .mobile-menu.is-open .mobile-menu__item {
+      transform: none;
+      transition-delay: 0ms;
+    }
+    .menu-toggle__line { transition: none; }
+  }
+</style>
+
+<style is:global>
+  /* Room at the bottom so the sticky button never covers content on mobile */
+  @media (max-width: 56.24rem) {
+    #smooth-content { padding-bottom: calc(var(--sticky-cta-height) + env(safe-area-inset-bottom)); }
+  }
+  /* Without smooth scrolling, stop the page scrolling behind the open menu */
+  html.menu-open { overflow: hidden; }
+</style>

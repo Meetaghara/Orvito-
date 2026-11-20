@@ -1,0 +1,39 @@
+---
+/** Home page FAQ preview: four questions and a link to the full list. */
+import Accordion from './Accordion.astro';
+import { faqPreview } from '../data/faq';
+---
+
+<section class="faq-preview section" aria-labelledby="faq-preview-title">
+  <div class="container faq-preview__inner">
+    <div class="faq-preview__head">
+      <span class="eyebrow">FAQ</span>
+      <h2 id="faq-preview-title" data-split>Good to know</h2>
+      <a class="faq-preview__all" href="/faq-and-contact" data-reveal>All questions</a>
+    </div>
+    <Accordion items={faqPreview} name="faq-preview" />
+  </div>
+</section>
+
+<style>
+  .faq-preview__inner {
+    display: grid;
+    gap: var(--space-7);
+  }
+  .faq-preview__head .eyebrow { margin-bottom: var(--space-4); }
+  .faq-preview__all {
+    display: inline-block;
+    margin-top: var(--space-5);
+    font-size: var(--text-sm);
+    color: var(--color-white);
+    text-decoration: underline;
+    text-underline-offset: 0.3em;
+    text-decoration-color: rgb(255 255 255 / 0.35);
+  }
+  @media (min-width: 64rem) {
+    .faq-preview__inner {
+      grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
+      align-items: start;
+    }
+  }
+</style>

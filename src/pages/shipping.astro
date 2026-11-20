@@ -1,0 +1,39 @@
+---
+/** Shipping policy (draft). Only confirmed facts; everything else is a marked placeholder. */
+import LegalLayout from '../layouts/LegalLayout.astro';
+import Pending from '../components/Pending.astro';
+import { bulk, isPending, ordering, policies } from '../data/site';
+
+const charges = isPending(ordering.deliveryCharges) ? null : ordering.deliveryCharges;
+---
+
+<LegalLayout
+  title="Shipping"
+  description="Where ORVITO delivers, when orders are dispatched, delivery charges and what to do if a parcel arrives damaged."
+  intro="Where we deliver, when your order leaves us and what it costs."
+>
+  <h2>Where we deliver</h2>
+  <p>{ordering.deliveryAreas === 'All India' ? 'We deliver across India.' : `We deliver to ${ordering.deliveryAreas}.`}</p>
+
+  <h2>When your order ships</h2>
+  <p>
+    Orders are placed on WhatsApp and paid by {ordering.paymentMethod}. {ordering.dispatchTime}. We don't offer
+    cash on delivery.
+  </p>
+
+  <h2>Delivery charges</h2>
+  <p>{charges ?? <Pending>Delivery charges, and any order value with free delivery</Pending>}</p>
+
+  <h2>Delivery time and tracking</h2>
+  <p>
+    <Pending>Courier partner, the usual delivery time after dispatch, and how the tracking link is shared</Pending>
+  </p>
+
+  <h2>If your parcel arrives damaged</h2>
+  <p>{policies.damaged} See our <a href="/returns">returns policy</a>.</p>
+
+  <h2>Bulk and gifting orders</h2>
+  <p>
+    Bulk orders start at {bulk.minimumOrderText} and are delivered {bulk.leadTime}. <a href="/bulk-and-gifting#enquiry">Send a bulk enquiry</a>.
+  </p>
+</LegalLayout>

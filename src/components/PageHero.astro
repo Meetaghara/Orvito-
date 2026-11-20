@@ -1,0 +1,44 @@
+---
+/** Opening block for inner pages: eyebrow, serif title that rises line by line, and an intro line. */
+interface Props {
+  eyebrow: string;
+  title: string;
+  /** Words of the title to set in italic (must appear in the title). */
+  italic?: string;
+  intro?: string;
+}
+const { eyebrow, title, italic, intro } = Astro.props;
+const [before, after] = italic && title.includes(italic) ? title.split(italic) : [title, ''];
+---
+
+<header class="page-hero">
+  <div class="container">
+    <span class="eyebrow" data-reveal>{eyebrow}</span>
+    <h1 class="page-hero__title" data-split>
+      {before}{italic && title.includes(italic) && <em>{italic}</em>}{after}
+    </h1>
+    {intro && <p class="page-hero__intro" data-reveal>{intro}</p>}
+    <slot />
+  </div>
+</header>
+
+<style>
+  .page-hero {
+    padding-top: calc(var(--nav-height) + env(safe-area-inset-top) + clamp(3rem, 2rem + 5vw, 7rem));
+    padding-bottom: clamp(2.5rem, 2rem + 3vw, 5rem);
+  }
+  .page-hero .eyebrow { margin-bottom: var(--space-5); }
+  .page-hero__title {
+    max-width: 16ch;
+    font-size: clamp(2.875rem, 1.78rem + 4.69vw, 6rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .page-hero__title em { font-style: italic; }
+  .page-hero__intro {
+    margin-top: var(--space-6);
+    max-width: 36rem;
+    font-size: var(--text-lg);
+    line-height: 1.5;
+  }
+</style>

@@ -1,0 +1,20 @@
+---
+/** Not found page. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+---
+
+<BaseLayout title="Page not found">
+  <PageHero eyebrow="404" title="This page took a long day off." italic="a long day off." intro="The link may be old, or the page has moved.">
+    <div class="nf__actions">
+      <a class="btn btn--solid btn--lg" href="/">Back to home</a>
+      <a class="btn btn--outline btn--lg" href="/the-bar">See the bar</a>
+    </div>
+  </PageHero>
+  <div class="nf__space" aria-hidden="true"></div>
+</BaseLayout>
+
+<style>
+  .nf__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-7); }
+  .nf__space { height: 20vh; }
+</style>

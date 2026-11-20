@@ -1,0 +1,59 @@
+---
+/**
+ * A small honey label that follows the pointer while it is over an element with data-cursor
+ * (the WhatsApp order buttons say "Order"). Desktop with a fine pointer only; the normal
+ * cursor stays visible, so nothing about clicking changes. Off for reduced motion.
+ */
+---
+
+<div class="cursor-label" aria-hidden="true" data-cursor-label><span data-cursor-text>Order</span></div>
+
+<script>
+  import { gsap, registerMotion } from '../scripts/motion';
+
+  registerMotion(({ reduced, desktop, finePointer }) => {
+    const label = document.querySelector<HTMLElement>('[data-cursor-label]');
+    const text = label?.querySelector<HTMLElement>('[data-cursor-text]');
+    if (!label || !text || reduced || !desktop || !finePointer) return;
+
+    // Interpolated follow (not glued to the pointer), so it moves with a little weight.
+    const xTo = gsap.quickTo(label, 'x', { duration: 0.35, ease: 'power3.out' });
+    const yTo = gsap.quickTo(label, 'y', { duration: 0.35, ease: 'power3.out' });
+    gsap.set(label, { autoAlpha: 0, scale: 0.9 });
+    let active: Element | null = null;
+
+    const onMove = (e: PointerEvent) => {
+      xTo(e.clientX + 18);
+      yTo(e.clientY + 18);
+      const target = (e.target as Element | null)?.closest<HTMLElement>('[data-cursor]') ?? null;
+      if (target === active) return;
+      active = target;
+      if (target) {
+        text.textContent = target.dataset.cursor ?? '';
+        gsap.to(label, { autoAlpha: 1, scale: 1, duration: 0.2, ease: 'power3.out', overwrite: 'auto' });
+      } else {
+        gsap.to(label, { autoAlpha: 0, scale: 0.9, duration: 0.15, ease: 'power2.out', overwrite: 'auto' });
+      }
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onMove);
+  });
+</script>
+
+<style>
+  .cursor-label {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: var(--z-cursor);
+    pointer-events: none;
+    padding: 0.35rem 0.7rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-honey);
+    color: var(--color-on-honey);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.04em;
+    visibility: hidden;
+  }
+</style>

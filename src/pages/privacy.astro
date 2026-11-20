@@ -1,0 +1,70 @@
+---
+/**
+ * Privacy policy (draft). Statements about the website itself are accurate for this build:
+ * no accounts, no checkout, no analytics or advertising cookies, self-hosted fonts.
+ * TODO: if analytics or a payment gateway is added later, update "Cookies and analytics".
+ */
+import LegalLayout from '../layouts/LegalLayout.astro';
+import Pending from '../components/Pending.astro';
+import { business, isPending, legal, site } from '../data/site';
+
+const known = (v: string | null) => (isPending(v) ? null : v);
+---
+
+<LegalLayout
+  title="Privacy"
+  description="What information ORVITO receives when you order or enquire on WhatsApp, and how it is used."
+  intro="What we receive when you order, and what we do with it."
+>
+  <h2>Who we are</h2>
+  <p>
+    {site.url.replace('https://', '')} is run by {known(business.legalName) ?? <Pending>Registered business name</Pending>},{' '}
+    {known(business.address) ?? <Pending>Registered business address</Pending>}.
+  </p>
+
+  <h2>What this website collects</h2>
+  <p>
+    Very little. There are no accounts and no checkout on this website. The order buttons and the bulk enquiry form
+    prepare a WhatsApp message in your browser. Nothing reaches us until you press send in WhatsApp.
+  </p>
+
+  <h2>What we receive when you message us</h2>
+  <p>
+    When you send an order or enquiry, we receive what is in the message: usually your name, phone number, delivery
+    address, pincode and order details, and your email or company name if you add them.
+  </p>
+
+  <h2>How we use it</h2>
+  <ul>
+    <li>To confirm your order, take payment and deliver it.</li>
+    <li>To reply to your questions and bulk enquiries.</li>
+    <li>To contact you about an order you have placed.</li>
+  </ul>
+  <p>
+    We share your name, address and phone number with the courier only to deliver your order.{' '}
+    <Pending>Courier partner</Pending>
+  </p>
+
+  <h2>WhatsApp</h2>
+  <p>
+    Messages are sent through WhatsApp, which is run by Meta. WhatsApp's own privacy policy applies to how it handles
+    your messages.
+  </p>
+
+  <h2>Cookies and analytics</h2>
+  <p>
+    This website does not use advertising or tracking cookies, and it does not use analytics. Fonts and images are
+    served from our own website.
+  </p>
+  <p>Hosting: {known(legal.hosting) ?? <Pending>Hosting provider</Pending>}</p>
+
+  <h2>How long we keep it</h2>
+  <p><Pending>How long order details and chats are kept</Pending></p>
+
+  <h2>Your choices</h2>
+  <p>
+    You can ask us to show, correct or delete the details we hold about you. Email{' '}
+    <a href={`mailto:${business.email}`}>{business.email}</a>. Privacy requests are handled by{' '}
+    {known(legal.grievanceOfficer) ?? <Pending>Name of the person who handles privacy requests</Pending>}.
+  </p>
+</LegalLayout>

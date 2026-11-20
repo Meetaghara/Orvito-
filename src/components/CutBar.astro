@@ -1,0 +1,90 @@
+---
+/**
+ * The unwrapped bar, large on black with a soft honey glow, settling into place as it scrolls through.
+ * Sits under the honey band, which overlaps its top edge.
+ *
+ * public/images/bar-real.png: the client's bar photo (19 Nov 2026), cut out of its white background
+ * so it sits on the dark page. To swap it, replace that file with another cut-out PNG (transparent background).
+ */
+import { Picture } from 'astro:assets';
+import bar from '../../public/images/bar-real.png';
+---
+
+<section class="cutbar" aria-label="Inside the bar" data-cutbar>
+  <div class="cutbar__frame">
+    <div class="cutbar__glow" aria-hidden="true"></div>
+    <div class="cutbar__bar" data-cutbar-bar>
+      <Picture
+        src={bar}
+        formats={['avif', 'webp']}
+        widths={[640, 960, 1400, bar.width]}
+        sizes="(min-width: 64rem) 72vw, 94vw"
+        alt="An unwrapped ORVITO bar: pumpkin seeds, roasted nuts and makhana pressed into a dark date and chocolate base"
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
+  </div>
+</section>
+
+<script>
+  import { gsap, registerMotion } from '../scripts/motion';
+
+  // Scroll-linked settle: the bar eases from slightly smaller and tilted to rest as the section passes.
+  registerMotion(({ reduced }) => {
+    const bar = document.querySelector<HTMLElement>('[data-cutbar-bar]');
+    if (!bar || reduced) return;
+    const tween = gsap.fromTo(
+      bar,
+      { scale: 0.9, rotate: -4, yPercent: 6 },
+      {
+        scale: 1,
+        rotate: 0,
+        yPercent: 0,
+        ease: 'none',
+        scrollTrigger: { trigger: '[data-cutbar]', start: 'top bottom', end: 'center center', scrub: true },
+      }
+    );
+    return () => tween.kill();
+  });
+</script>
+
+<style>
+  .cutbar {
+    position: relative;
+    z-index: 1;
+  }
+  .cutbar__frame {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    max-height: 86svh;
+    width: 100%;
+    background: var(--color-bg);
+    display: grid;
+    place-items: center;
+  }
+  .cutbar__glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 42% 38% at 50% 56%, rgb(201 147 47 / 0.22), transparent 70%);
+    pointer-events: none;
+  }
+  .cutbar__bar {
+    position: relative;
+    width: min(72vw, 72rem);
+    /* sit a little low so the honey band above never covers the bar */
+    margin-top: 7%;
+    transform-origin: 50% 60%;
+    will-change: transform;
+  }
+  .cutbar__bar :global(img) {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  @media (max-width: 47.99rem) {
+    .cutbar__frame { aspect-ratio: 4 / 3; }
+    .cutbar__bar { width: 94vw; margin-top: 4%; }
+  }
+</style>

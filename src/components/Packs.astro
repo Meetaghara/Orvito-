@@ -1,0 +1,292 @@
+---
+/**
+ * "Choose Your Pack": three dark cards (Single Bar, Box of 6, Box of 12), all data from src/data/products.ts.
+ * Each card has a quantity stepper; the total and the WhatsApp message update live.
+ * The order button is OrderButton (mode="whatsapp" now; a payment gateway can replace it later).
+ * HuntGame (find the hidden bar, 50% off a Box of 12) is included here so the floating HuntLauncher
+ * can open it on this page; the badge on the Box of 12 photo was removed on 20 Nov 2026.
+ */
+import { Picture } from 'astro:assets';
+import OrderButton from './OrderButton.astro';
+import HuntGame from './HuntGame.astro';
+import { formatPrice, packs, pricePerBar, unitPrice } from '../data/products';
+import { findTheBar, isPending, ordering, productFacts, whatsapp } from '../data/site';
+
+interface Props {
+  title?: string;
+  headingLevel?: 'h2' | 'h3';
+}
+const { title = 'Choose your pack', headingLevel: Heading = 'h2' } = Astro.props;
+
+const photos = import.meta.glob<{ default: ImageMetadata }>('../../public/images/packs/*.jpg', { eager: true });
+const photoFor = (src: string | null) => (src ? photos[`../../public${src}`]?.default : undefined);
+
+const MAX_QTY = 20;
+const deliveryCharges = isPending(ordering.deliveryCharges) ? null : ordering.deliveryCharges;
+---
+
+<section class="packs section" id="order" aria-labelledby="packs-title">
+  <div class="container">
+    <div class="section-head">
+      <Heading id="packs-title" data-split>{title}</Heading>
+      <p data-reveal>Pick a pack and send the order on WhatsApp. We confirm it there and share UPI details.</p>
+    </div>
+
+    <ul class="packs__grid" role="list" data-stagger>
+      {
+        packs.map((pack) => {
+          const photo = photoFor(pack.image.src);
+          const price = unitPrice(pack);
+          const perBar = pack.bars > 1 ? pricePerBar(pack) : null;
+          return (
+            <li class="pack" data-stagger-item data-pack-card data-price={price ?? ''}>
+              <div class="pack__photo">
+                {photo ? (
+                  <Picture
+                    src={photo}
+                    formats={['avif', 'webp']}
+                    widths={[360, 540, 800]}
+                    sizes="(min-width: 64rem) 360px, (min-width: 40rem) 30vw, 78vw"
+                    alt={pack.image.alt}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  <span class="photo-placeholder">{pack.image.placeholderLabel}</span>
+                )}
+              </div>
+
+              <div class="pack__body">
+                <h3 class="pack__name">{pack.name}</h3>
+                <p class="pack__qty">{pack.netQuantity}</p>
+                <p class="pack__desc">{pack.description}</p>
+
+                <p class="pack__price">
+                  <span class="pack__mrp">{formatPrice(price)}</span>
+                  {perBar !== null && <span class="pack__per-bar">{formatPrice(perBar)} per bar</span>}
+                </p>
+                <p class="pack__tax">MRP inclusive of all taxes</p>
+
+                <div class="pack__order">
+                  <div class="stepper" role="group" aria-label={`Quantity of ${pack.name}`}>
+                    <button type="button" class="stepper__btn" data-step="-1" aria-label="One less" disabled>
+                      −
+                    </button>
+                    <output class="stepper__value" data-qty aria-live="polite">
+                      1
+                    </output>
+                    <button type="button" class="stepper__btn" data-step="1" aria-label="One more" data-max={MAX_QTY}>
+                      +
+                    </button>
+                  </div>
+                  <p class="pack__total" aria-live="polite">
+                    Total <span data-total>{formatPrice(price)}</span>
+                  </p>
+                </div>
+
+                <OrderButton packId={pack.id} quantity={1} class="pack__cta" />
+              </div>
+            </li>
+          );
+        })
+      }
+    </ul>
+
+    <ul class="packs__notes" role="list" data-reveal>
+      <li>{productFacts.allergens}</li>
+      <li>
+        Delivery: {ordering.deliveryAreas}.{' '}
+        {deliveryCharges ?? <span class="pending">[Delivery charges to be confirmed]</span>}
+      </li>
+      <li>Dispatch: {ordering.dispatchTime.charAt(0).toLowerCase() + ordering.dispatchTime.slice(1)}.</li>
+      <li>Payment: {ordering.paymentMethod}. {ordering.cashOnDelivery ? '' : 'No cash on delivery.'}</li>
+      <li>We reply on WhatsApp {whatsapp.replyHours}.</li>
+    </ul>
+    {findTheBar.enabled && <HuntGame />}
+  </div>
+</section>
+
+<script>
+  import { formatPrice } from '../data/products';
+
+  // Quantity steppers. Delegated on document, so they keep working after page transitions.
+  document.addEventListener('click', (event) => {
+    const btn = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-step]');
+    if (!btn) return;
+    const card = btn.closest<HTMLElement>('[data-pack-card]');
+    if (!card) return;
+
+    const output = card.querySelector<HTMLOutputElement>('[data-qty]')!;
+    const minus = card.querySelector<HTMLButtonElement>('[data-step="-1"]')!;
+    const plus = card.querySelector<HTMLButtonElement>('[data-step="1"]')!;
+    const max = Number(plus.dataset.max) || 20;
+
+    const qty = Math.min(max, Math.max(1, Number(output.textContent) + Number(btn.dataset.step)));
+    output.textContent = String(qty);
+    minus.disabled = qty <= 1;
+    plus.disabled = qty >= max;
+
+    const price = Number(card.dataset.price);
+    const total = card.querySelector<HTMLElement>('[data-total]');
+    if (total && price) total.textContent = formatPrice(price * qty);
+
+    // OrderButton reads data-quantity when clicked and rebuilds the WhatsApp message.
+    const order = card.querySelector<HTMLAnchorElement>('a[data-order-button]');
+    if (order) order.dataset.quantity = String(qty);
+  });
+</script>
+
+<style>
+  .packs__grid {
+    list-style: none;
+    padding: 0;
+    margin-top: var(--space-8);
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+  .pack {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+  }
+  .pack__photo {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    background: var(--color-placeholder);
+  }
+  .pack__photo :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .pack__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: var(--space-5);
+  }
+  .pack__name {
+    font-size: var(--text-h4);
+    line-height: 1.1;
+  }
+  .pack__qty {
+    margin-top: var(--space-1);
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    letter-spacing: 0;
+    color: var(--color-text-muted);
+  }
+  .pack__desc {
+    margin-top: var(--space-3);
+    font-size: var(--text-sm);
+  }
+  .pack__price {
+    margin-top: auto;
+    padding-top: var(--space-5);
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+  }
+  /* Prices in Geist: Instrument Serif has no rupee sign */
+  .pack__mrp {
+    font-family: var(--font-sans);
+    font-weight: var(--weight-regular);
+    font-size: clamp(1.75rem, 1.6rem + 0.6vw, 2.125rem);
+    letter-spacing: -0.03em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-white);
+  }
+  .pack__per-bar {
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    color: var(--color-honey);
+  }
+  .pack__tax {
+    margin-top: var(--space-1);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+  }
+
+  .pack__order {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+  }
+  .stepper {
+    display: inline-flex;
+    align-items: center;
+    border: var(--border);
+    border-radius: var(--radius-button);
+  }
+  .stepper__btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.125rem;
+    color: var(--color-white);
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+  .stepper__btn:active:not(:disabled) { transform: scale(0.92); }
+  .stepper__btn:disabled { opacity: 0.3; cursor: default; }
+  .stepper__value {
+    min-width: 2ch;
+    font-family: var(--font-mono);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-white);
+  }
+  .pack__total {
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    color: var(--color-text-muted);
+  }
+  .pack__total span {
+    color: var(--color-white);
+    font-variant-numeric: tabular-nums;
+  }
+  .pack :global(.pack__cta) {
+    margin-top: var(--space-4);
+    width: 100%;
+  }
+
+  .packs__notes {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-7) auto 0;
+    max-width: 44rem;
+    display: grid;
+    gap: var(--space-2);
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  /* Tablets and phones: a swipeable row of cards */
+  @media (max-width: 63.99rem) {
+    .packs__grid {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      margin-inline: calc(var(--gutter) * -1);
+      padding-inline: var(--gutter);
+      scroll-padding-inline: var(--gutter);
+      scrollbar-width: none;
+    }
+    .packs__grid::-webkit-scrollbar { display: none; }
+    .pack {
+      flex: 0 0 min(82%, 22rem);
+      scroll-snap-align: start;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stepper__btn:active:not(:disabled) { transform: none; }
+  }
+</style>

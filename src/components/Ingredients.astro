@@ -1,0 +1,145 @@
+---
+/**
+ * "What goes inside": the 8 ingredients as round photos with lowercase labels, 4 per row.
+ * Motion: the heading rises line by line; the circles pop in as one wave whose gaps shrink
+ * (choreograph), and on desktop alternate columns drift slightly with the scroll (parallax).
+ * Photos are temporary AI images in public/images/ingredients/ (same file names for real ones).
+ */
+import { Picture } from 'astro:assets';
+import { ingredients } from '../data/site';
+
+interface Props {
+  /** Show each ingredient's one-line note (used on The Bar page). */
+  withNotes?: boolean;
+  /** Heading text and level. */
+  title?: string;
+  intro?: string;
+  headingLevel?: 'h2' | 'h3';
+}
+const {
+  withNotes = false,
+  title = 'What goes inside',
+  intro = 'Eight ingredients, in the order they appear on the label.',
+  headingLevel: Heading = 'h2',
+} = Astro.props;
+
+const photos = import.meta.glob<{ default: ImageMetadata }>('../../public/images/ingredients/*.jpg', { eager: true });
+const photoFor = (id: string) => photos[`../../public/images/ingredients/${id}.jpg`]?.default;
+---
+
+<section class="ingredients section" aria-labelledby="ingredients-title" data-ingredients>
+  <div class="container">
+    <div class="section-head">
+      <Heading class="ingredients__title" id="ingredients-title" data-split>{title}</Heading>
+      {intro && <p data-reveal>{intro}</p>}
+    </div>
+
+    <ul class:list={['ingredients__grid', { 'has-notes': withNotes }]} role="list" data-ingredients-grid>
+      {
+        ingredients.map((item, i) => {
+          const photo = photoFor(item.id);
+          return (
+            <li class="ingredient" data-speed={i % 2 === 0 ? '0.97' : '1.03'}>
+              <div class="ingredient__inner" data-ingredient>
+                <div class="ingredient__photo">
+                  {photo ? (
+                    <Picture
+                      src={photo}
+                      formats={['avif', 'webp']}
+                      widths={[160, 240, 360, 480]}
+                      sizes="(min-width: 64rem) 180px, (min-width: 48rem) 22vw, 21vw"
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <span class="photo-placeholder">Photo: {item.label}</span>
+                  )}
+                </div>
+                <p class="ingredient__label">{item.label}</p>
+                {withNotes && <p class="ingredient__note">{item.note}</p>}
+              </div>
+            </li>
+          );
+        })
+      }
+    </ul>
+  </div>
+</section>
+
+<script>
+  import { gsap, registerMotion } from '../scripts/motion';
+
+  registerMotion(({ reduced }) => {
+    document.querySelectorAll<HTMLElement>('[data-ingredients-grid]').forEach((grid) => {
+      const items = grid.querySelectorAll<HTMLElement>('[data-ingredient]');
+      gsap.from(items, {
+        autoAlpha: 0,
+        scale: reduced ? 1 : 0.92,
+        y: reduced ? 0 : 24,
+        duration: reduced ? 0.4 : 0.8,
+        ease: 'power3.out',
+        // Row by row, left to right; the gaps get shorter towards the end so it reads as one wave.
+        stagger: { amount: reduced ? 0.1 : 0.55, ease: 'power2.out' },
+        scrollTrigger: { trigger: grid, start: 'top 82%', once: true },
+      });
+    });
+  });
+</script>
+
+<style>
+  .ingredients__grid {
+    list-style: none;
+    padding: 0;
+    margin-top: var(--space-8);
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-6) var(--space-4);
+    max-width: 52rem;
+    margin-inline: auto;
+  }
+  @media (min-width: 48rem) {
+    .ingredients__grid { gap: var(--space-8) var(--space-7); }
+  }
+
+  .ingredient__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .ingredient__photo {
+    width: 100%;
+    max-width: 11.25rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06);
+    background: var(--color-placeholder-dark);
+  }
+  .ingredient__photo :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Slightly larger than the circle so the corners of the square photo never show */
+    transform: scale(1.06);
+  }
+  .ingredient__photo .photo-placeholder { border-radius: 50%; min-height: 0; }
+
+  .ingredient__label {
+    margin-top: var(--space-3);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: var(--color-text);
+  }
+  .ingredient__note {
+    margin-top: var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+  @media (max-width: 47.99rem) {
+    .ingredient__label { font-size: 0.6875rem; margin-top: var(--space-2); }
+    .ingredient__note { display: none; }
+  }
+</style>

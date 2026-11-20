@@ -1,0 +1,144 @@
+---
+/**
+ * Stats band. Desktop: a honey band tilted about -3 degrees with black serif text running as a ticker.
+ * The ticker drifts slowly, speeds up with scroll speed and follows scroll direction (Brandemic's moving strip).
+ * Mobile: a flat ivory band with honey-deep text, as in the mobile mockup.
+ * Reduced motion: the text stays still.
+ */
+import { productFacts, site } from '../data/site';
+
+const facts = [`${productFacts.netQuantityGrams} g`, '8 ingredients', productFacts.format.replace(' bar', ''), site.madeIn];
+// Enough copies that one group is wider than the widest screen; two groups make the loop seamless.
+const group = [...facts, ...facts];
+---
+
+<section class="band" aria-label="Key facts" data-band>
+  <p class="visually-hidden">{facts.join(', ')}.</p>
+  <div class="band__strip">
+    <div class="band__track" aria-hidden="true" data-band-track>
+      {
+        [0, 1].map(() => (
+          <div class="band__group">
+            {group.map((fact) => (
+              <span class="band__item">
+                {fact}
+                <span class="band__dot">·</span>
+              </span>
+            ))}
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<script>
+  import { gsap, registerMotion, ScrollTrigger } from '../scripts/motion';
+
+  registerMotion(({ reduced }) => {
+    const band = document.querySelector<HTMLElement>('[data-band]');
+    const track = band?.querySelector<HTMLElement>('[data-band-track]');
+    if (!band || !track || reduced) return;
+
+    const BASE = 38; // px per second: a slow, constant drift (constant motion uses linear speed)
+    const setX = gsap.quickSetter(track, 'x', 'px');
+    let half = track.scrollWidth / 2;
+    let x = 0;
+    let direction = 1;
+    let boost = 1;
+
+    const tick = (_time: number, deltaMs: number) => {
+      boost += (1 - boost) * 0.06; // ease back to the base speed after a fast scroll
+      x -= direction * BASE * boost * (deltaMs / 1000);
+      setX(gsap.utils.wrap(-half, 0, x));
+    };
+
+    const onResize = () => {
+      half = track.scrollWidth / 2;
+    };
+    window.addEventListener('resize', onResize);
+
+    // Only run while the band is on screen.
+    const st = ScrollTrigger.create({
+      trigger: band,
+      start: 'top bottom',
+      end: 'bottom top',
+      onToggle: (self) => (self.isActive ? gsap.ticker.add(tick) : gsap.ticker.remove(tick)),
+      onUpdate: (self) => {
+        direction = self.direction;
+        boost = Math.max(boost, gsap.utils.clamp(1, 6, 1 + Math.abs(self.getVelocity()) / 350));
+      },
+    });
+
+    return () => {
+      st.kill();
+      gsap.ticker.remove(tick);
+      window.removeEventListener('resize', onResize);
+    };
+  });
+</script>
+
+<style>
+  .band {
+    position: relative;
+    z-index: 2;
+    /* Overlap the photo below, like the layout */
+    margin-bottom: calc(var(--space-7) * -1);
+    padding-block: var(--space-6);
+    overflow: clip;
+  }
+  .band__strip {
+    width: 112vw;
+    margin-left: -6vw;
+    background: var(--color-honey);
+    color: var(--color-on-honey);
+    transform: rotate(-3deg);
+    overflow: hidden;
+    box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
+  }
+  .band__track {
+    display: flex;
+    width: max-content;
+    will-change: transform;
+  }
+  .band__group {
+    display: flex;
+    flex: none;
+  }
+  .band__item {
+    display: inline-flex;
+    align-items: center;
+    padding-block: var(--space-5);
+    font-family: var(--font-mono);
+    font-weight: var(--weight-medium);
+    font-size: clamp(1rem, 0.85rem + 0.6vw, 1.375rem);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .band__dot {
+    padding-inline: 0.7em;
+    opacity: 0.6;
+  }
+
+  /* Phones: flat ivory band with honey-deep text */
+  @media (max-width: 47.99rem) {
+    .band {
+      margin-bottom: 0;
+      padding-block: 0;
+    }
+    .band__strip {
+      width: 100%;
+      margin-left: 0;
+      transform: none;
+      background: var(--color-ivory);
+      color: var(--color-honey-text);
+      box-shadow: none;
+    }
+    .band__item {
+      padding-block: var(--space-3);
+      font-size: 1.125rem;
+    }
+  }
+</style>

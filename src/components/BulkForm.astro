@@ -1,0 +1,276 @@
+---
+/**
+ * Bulk and gifting enquiry. Nothing is stored or sent by the website: on submit, the answers
+ * become a pre-filled WhatsApp message that opens in a new tab, and the customer sends it.
+ * Works with the keyboard and screen readers; native validation plus a clear minimum-order message.
+ */
+import { bulk, isPending, whatsapp } from '../data/site';
+
+const numberPending = isPending(whatsapp.number);
+const purposes = ['Hotel or guest rooms', 'Office or team', 'Gifting', 'Event', 'Other'];
+---
+
+<form
+  class="bulk-form"
+  data-bulk-form
+  data-number={numberPending ? '' : whatsapp.number.replace(/\D/g, '')}
+  data-min={bulk.minimumOrder}
+  data-astro-reload
+  novalidate
+>
+  <div class="bulk-form__grid">
+    <div class="field">
+      <label for="bf-name">Your name <span aria-hidden="true">*</span></label>
+      <input id="bf-name" name="name" type="text" autocomplete="name" required />
+      <p class="field__error" id="bf-name-error" hidden>Please add your name.</p>
+    </div>
+
+    <div class="field">
+      <label for="bf-org">Company or organisation</label>
+      <input id="bf-org" name="organisation" type="text" autocomplete="organization" />
+    </div>
+
+    <div class="field">
+      <label for="bf-purpose">What is it for? <span aria-hidden="true">*</span></label>
+      <div class="select">
+        <select id="bf-purpose" name="purpose" required>
+          <option value="" selected disabled>Choose one</option>
+          {purposes.map((p) => <option>{p}</option>)}
+        </select>
+      </div>
+      <p class="field__error" id="bf-purpose-error" hidden>Please choose what the order is for.</p>
+    </div>
+
+    <div class="field">
+      <label for="bf-qty">Number of bars <span aria-hidden="true">*</span></label>
+      <input
+        id="bf-qty"
+        name="quantity"
+        type="number"
+        inputmode="numeric"
+        min={bulk.minimumOrder}
+        step="1"
+        placeholder={`${bulk.minimumOrder} or more`}
+        aria-describedby="bf-qty-hint"
+        required
+      />
+      <p class="field__hint" id="bf-qty-hint">Minimum order {bulk.minimumOrderText}.</p>
+      <p class="field__error" id="bf-qty-error" hidden>The minimum order is {bulk.minimumOrderText}.</p>
+    </div>
+
+    <div class="field">
+      <label for="bf-date">Needed by</label>
+      <input id="bf-date" name="date" type="date" aria-describedby="bf-date-hint" />
+      <p class="field__hint" id="bf-date-hint">Allow {bulk.leadTime}.</p>
+    </div>
+
+    <div class="field">
+      <label for="bf-place">City and pincode <span aria-hidden="true">*</span></label>
+      <input id="bf-place" name="place" type="text" autocomplete="address-level2" required />
+      <p class="field__error" id="bf-place-error" hidden>Please add the delivery city and pincode.</p>
+    </div>
+
+    <div class="field">
+      <label for="bf-email">Email</label>
+      <input id="bf-email" name="email" type="email" autocomplete="email" />
+      <p class="field__error" id="bf-email-error" hidden>Please check the email address.</p>
+    </div>
+
+    <div class="field field--check">
+      <input id="bf-boxes" name="boxes" type="checkbox" />
+      <label for="bf-boxes">I'd like custom gift boxes</label>
+    </div>
+
+    <div class="field field--wide">
+      <label for="bf-message">Anything else?</label>
+      <textarea id="bf-message" name="message" rows="4" placeholder="Branding, delivery address, mix of packs…"></textarea>
+    </div>
+  </div>
+
+  <div class="bulk-form__submit">
+    <button type="submit" class="btn btn--solid btn--lg" data-cursor="Send">Send enquiry on WhatsApp</button>
+    <p class="bulk-form__note">
+      This opens WhatsApp with your enquiry filled in. Nothing is stored on this website.
+    </p>
+    <p class="bulk-form__status" role="status" aria-live="polite" data-bulk-status></p>
+  </div>
+</form>
+
+<script>
+  // Delegated on document so it keeps working after View Transition page swaps.
+  // Capture phase (and data-astro-reload on the form) so the page router never submits it as a navigation.
+  const value = (form: HTMLFormElement, name: string) =>
+    ((form.elements.namedItem(name) as HTMLInputElement | null)?.value ?? '').trim();
+
+  function showError(input: HTMLElement, show: boolean) {
+    const error = document.getElementById(`${input.id}-error`);
+    if (error) error.hidden = !show;
+    input.toggleAttribute('aria-invalid', show);
+    if (show && error) input.setAttribute('aria-errormessage', error.id);
+    else input.removeAttribute('aria-errormessage');
+  }
+
+  document.addEventListener('submit', (event) => {
+    const form = (event.target as Element | null)?.closest<HTMLFormElement>('form[data-bulk-form]');
+    if (!form) return;
+    event.preventDefault();
+
+    const min = Number(form.dataset.min) || 0;
+    const qtyInput = form.querySelector<HTMLInputElement>('#bf-qty')!;
+    const qty = Number(qtyInput.value);
+    qtyInput.setCustomValidity(qtyInput.value && (!Number.isInteger(qty) || qty < min) ? 'min' : '');
+
+    let firstInvalid: HTMLElement | null = null;
+    form.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select').forEach((field) => {
+      if (!field.id) return;
+      const invalid = !field.checkValidity();
+      showError(field, invalid);
+      if (invalid && !firstInvalid) firstInvalid = field;
+    });
+    if (firstInvalid) {
+      (firstInvalid as HTMLElement).focus();
+      return;
+    }
+
+    const ref = `ORV-BULK-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    const date = value(form, 'date');
+    const niceDate = date
+      ? new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+      : '';
+    const boxes = (form.elements.namedItem('boxes') as HTMLInputElement).checked ? 'Yes' : 'No';
+
+    const lines = [
+      "Hi ORVITO, I'd like to enquire about a bulk order.",
+      '',
+      `Enquiry ref: ${ref}`,
+      `Name: ${value(form, 'name')}`,
+      `Organisation: ${value(form, 'organisation')}`,
+      `For: ${value(form, 'purpose')}`,
+      `Quantity: ${qty} bars`,
+      `Needed by: ${niceDate}`,
+      `Custom gift boxes: ${boxes}`,
+      `City and pincode: ${value(form, 'place')}`,
+      `Email: ${value(form, 'email')}`,
+    ];
+    const message = value(form, 'message');
+    if (message) lines.push('', message);
+
+    const href = `https://wa.me/${form.dataset.number ?? ''}?text=${encodeURIComponent(lines.join('\n'))}`;
+    // A link click (inside the submit gesture) opens WhatsApp in a new tab without a popup warning.
+    const link = Object.assign(document.createElement('a'), { href, target: '_blank', rel: 'noopener' });
+    link.click();
+
+    const status = form.querySelector<HTMLElement>('[data-bulk-status]');
+    if (status) status.textContent = `WhatsApp is open with your enquiry (${ref}). Send the message there and we'll reply.`;
+  }, true);
+
+  // Clear a field's error as soon as it is fixed.
+  document.addEventListener('input', (event) => {
+    const field = event.target as HTMLInputElement;
+    if (!field.closest?.('form[data-bulk-form]') || !field.hasAttribute('aria-invalid')) return;
+    if (field.id === 'bf-qty') field.setCustomValidity('');
+    if (field.checkValidity()) showError(field, false);
+  });
+</script>
+
+<style>
+  .bulk-form__grid {
+    display: grid;
+    gap: var(--space-5) var(--space-5);
+  }
+  @media (min-width: 40rem) {
+    .bulk-form__grid { grid-template-columns: 1fr 1fr; }
+    .field--wide { grid-column: 1 / -1; }
+  }
+
+  .field { display: grid; gap: var(--space-2); align-content: start; }
+  .field label { font-size: var(--text-sm); color: var(--color-white); }
+  .field label span { color: var(--color-honey); }
+
+  .field input:not([type='checkbox']),
+  .field select,
+  .field textarea {
+    width: 100%;
+    min-height: 48px;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    color: var(--color-white);
+    border: 1px solid rgb(255 255 255 / 0.16);
+    border-radius: var(--radius-button);
+    font: inherit;
+    font-size: 16px; /* stops iOS zooming into the field */
+    color-scheme: dark;
+    transition: border-color var(--duration-fast) var(--ease-out);
+  }
+  .field textarea { resize: vertical; min-height: 7rem; }
+  .field input::placeholder,
+  .field textarea::placeholder { color: rgb(255 255 255 / 0.4); }
+  .field input:focus-visible,
+  .field select:focus-visible,
+  .field textarea:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-color: transparent;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .field input:hover,
+    .field select:hover,
+    .field textarea:hover { border-color: rgb(255 255 255 / 0.32); }
+  }
+  .field [aria-invalid] { border-color: #e5866f; }
+
+  .select { position: relative; }
+  .select select { appearance: none; padding-right: var(--space-7); }
+  .select::after {
+    content: '';
+    position: absolute;
+    right: var(--space-4);
+    top: 50%;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+    color: rgb(255 255 255 / 0.6);
+  }
+
+  .field--check {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: var(--space-3);
+    align-self: end;
+    min-height: 48px;
+  }
+  .field--check input {
+    width: 1.25rem;
+    height: 1.25rem;
+    accent-color: var(--color-honey);
+  }
+
+  .field__hint { font-size: var(--text-xs); color: var(--color-text-muted); }
+  .field__error { font-size: var(--text-xs); color: #f0a08c; }
+
+  .bulk-form__submit {
+    margin-top: var(--space-7);
+    display: grid;
+    gap: var(--space-3);
+    justify-items: start;
+  }
+  .bulk-form__note { font-size: var(--text-xs); color: var(--color-text-muted); }
+  .bulk-form__status { font-size: var(--text-sm); color: var(--color-white); }
+  .bulk-form__status:empty { display: none; }
+
+  @media (max-width: 40rem) {
+    .bulk-form__submit .btn { width: 100%; }
+  }
+</style>
+
+<style is:global>
+  /* The sticky "Order on WhatsApp" bar (phones) would sit over this form and send a retail order
+     instead of an enquiry, so hide it on any page that has the bulk form. */
+  html:has(form[data-bulk-form]) [data-sticky-cta] { display: none; }
+  @media (max-width: 56.24rem) {
+    html:has(form[data-bulk-form]) #smooth-content { padding-bottom: 0; }
+  }
+</style>

@@ -1,0 +1,54 @@
+---
+/**
+ * Shared layout for /privacy, /terms, /shipping and /returns: page header, a draft notice
+ * until legal.reviewed is true, the text, and a contact line.
+ * Inside the slot, use <Pending>…</Pending> for anything the client has not confirmed.
+ */
+import BaseLayout from './BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import { business, legal, whatsapp } from '../data/site';
+
+interface Props {
+  title: string;
+  description: string;
+  intro?: string;
+}
+const { title, description, intro } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <PageHero eyebrow="Policies" title={title} intro={intro}>
+    <p class="legal__meta" data-reveal>
+      {
+        legal.reviewed && legal.lastUpdated ? (
+          <>Last updated {legal.lastUpdated}</>
+        ) : (
+          <span class="pending">[Draft: to be reviewed by ORVITO before launch]</span>
+        )
+      }
+    </p>
+  </PageHero>
+
+  <section class="legal">
+    <div class="container">
+      <span class="legal__rule" aria-hidden="true" data-draw></span>
+      <article class="prose legal__body" data-reveal>
+        <slot />
+        <h2>Questions</h2>
+        <p>
+          Message us on WhatsApp at {whatsapp.display} ({whatsapp.replyHours}) or email{' '}
+          <a href={`mailto:${business.email}`}>{business.email}</a>.
+        </p>
+      </article>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .legal__meta { margin-top: var(--space-5); font-family: var(--font-mono); font-size: var(--text-label); color: var(--color-text-muted); }
+  .legal { padding-bottom: var(--section-space); }
+  .legal__rule { display: block; height: 1px; background: rgb(255 255 255 / 0.2); margin-bottom: var(--space-8); }
+  .legal__body { max-width: 44rem; }
+  .legal__body :global(h2) { font-size: var(--text-h4); margin-top: var(--space-8); }
+  .legal__body :global(h2:first-child) { margin-top: 0; }
+</style>

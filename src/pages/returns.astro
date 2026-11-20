@@ -1,0 +1,25 @@
+---
+/** Returns, cancellations and refunds (draft). Built from policies in src/data/site.ts. */
+import LegalLayout from '../layouts/LegalLayout.astro';
+import { policies } from '../data/site';
+---
+
+<LegalLayout
+  title="Returns & refunds"
+  description="What to do if your ORVITO order arrives damaged or wrong, how to cancel, and how refunds work."
+  intro="What happens if something goes wrong with your order."
+>
+  <h2>Damaged or wrong items</h2>
+  <p>{policies.damaged}</p>
+
+  <h2>Cancelling an order</h2>
+  <p>{policies.cancellation} Message us on WhatsApp with your order reference (it starts with ORV-WEB-).</p>
+
+  <h2>Refunds</h2>
+  <p>
+    {policies.refundMethod} {policies.refundTime}
+  </p>
+
+  <h2>Returning an order that is not damaged</h2>
+  <p>{policies.noReturns}</p>
+</LegalLayout>

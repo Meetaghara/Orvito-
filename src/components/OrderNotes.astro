@@ -1,0 +1,47 @@
+---
+/**
+ * The short print that sits next to an order button: MRP, delivery, reply hours and allergens.
+ * One line on wide screens, stacked on phones. Values come from src/data/site.ts.
+ */
+import { isPending, ordering, productFacts, whatsapp } from '../data/site';
+
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+const deliveryCharges = isPending(ordering.deliveryCharges) ? null : ordering.deliveryCharges;
+---
+
+<ul class:list={['order-notes', className]} role="list" data-reveal>
+  <li>{ordering.mrpNote}</li>
+  <li>
+    Delivery: {ordering.deliveryAreas},{' '}
+    {deliveryCharges ?? <span class="pending">[charges to be confirmed]</span>}
+  </li>
+  <li>Replies {whatsapp.replyHours}</li>
+  <li>{productFacts.allergens}</li>
+</ul>
+
+<style>
+  .order-notes {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-1) var(--space-4);
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    color: var(--color-text-muted);
+    max-width: 46rem;
+  }
+  .order-notes li + li::before {
+    content: '·';
+    margin-right: var(--space-4);
+    color: rgb(255 255 255 / 0.3);
+  }
+  @media (max-width: 40rem) {
+    .order-notes { flex-direction: column; align-items: center; text-align: center; }
+    .order-notes li + li::before { content: none; }
+  }
+</style>

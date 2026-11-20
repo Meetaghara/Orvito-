@@ -1,0 +1,106 @@
+---
+/**
+ * The Bar: what the bar is, what goes in it, the label details and nutrition, then the packs.
+ * The bar visual is public/images/bar-real.png, the client's bar photo cut out of its white background
+ * (19 Nov 2026), shown on black with a honey glow.
+ */
+import { Picture } from 'astro:assets';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import Ingredients from '../components/Ingredients.astro';
+import ProductFacts from '../components/ProductFacts.astro';
+import Packs from '../components/Packs.astro';
+import barImg from '../../public/images/bar-real.png';
+import { productFacts } from '../data/site';
+
+const points = [
+  { title: `${productFacts.netQuantityGrams} g, sealed`, line: 'One single-serve bar, sealed to carry in a bag, a desk drawer or a glovebox.' },
+  { title: 'Eight ingredients', line: 'Makhana, dates, pumpkin seeds, roasted chana dal, almonds, peanuts, chocolate and honey.' },
+  { title: 'Small batches', line: 'Made at home in Rajkot, a few batches at a time.' },
+];
+---
+
+<BaseLayout
+  title="The Bar"
+  description="ORVITO is a sealed 60 g bar made with makhana, dates, roasted nuts, seeds, chocolate and honey. See the ingredients, label details and packs."
+>
+  <PageHero
+    eyebrow="The Bar"
+    title="A proper snack for long days."
+    italic="long days."
+    intro="A sealed 60 g bar, sweetened with dates and honey, with a crunch of makhana and roasted nuts."
+  />
+
+  <section class="bar-visual" aria-label="The ORVITO bar">
+    <div class="container">
+      <div class="bar-visual__frame" data-reveal>
+        <div class="bar-visual__glow" aria-hidden="true"></div>
+        <div class="bar-visual__img" data-speed="0.95">
+          <Picture
+            src={barImg}
+            formats={['avif', 'webp']}
+            widths={[640, 960, 1400, barImg.width]}
+            sizes="(min-width: 75rem) 900px, 90vw"
+            alt="An unwrapped ORVITO bar: pumpkin seeds, roasted nuts and makhana pressed into a dark date and chocolate base"
+            loading="eager"
+            fetchpriority="high"
+          />
+        </div>
+      </div>
+
+      <ul class="bar-points" role="list" data-stagger>
+        {
+          points.map((p) => (
+            <li class="bar-point" data-stagger-item>
+              <span class="bar-point__rule" aria-hidden="true" data-draw />
+              <h2 class="bar-point__title">{p.title}</h2>
+              <p>{p.line}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <Ingredients withNotes title="What goes inside" intro="Eight ingredients, in the order they appear on the label." />
+  <ProductFacts />
+  <Packs title="Order a pack" />
+</BaseLayout>
+
+<style>
+  .bar-visual__frame {
+    position: relative;
+    max-width: 69rem;
+    margin-inline: auto;
+    padding-block: clamp(1rem, 4vw, 3rem);
+    display: grid;
+    place-items: center;
+  }
+  .bar-visual__glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 48% 42% at 50% 55%, rgb(201 147 47 / 0.2), transparent 70%);
+    pointer-events: none;
+  }
+  .bar-visual__img { position: relative; width: min(100%, 56rem); }
+  .bar-visual__img :global(img) { width: 100%; height: auto; display: block; }
+
+  .bar-points {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: var(--space-7) var(--space-6);
+    margin-top: var(--space-9);
+  }
+  @media (min-width: 48rem) {
+    .bar-points { grid-template-columns: repeat(3, 1fr); }
+  }
+  .bar-point__rule {
+    display: block;
+    height: 1px;
+    background: rgb(255 255 255 / 0.25);
+    margin-bottom: var(--space-5);
+  }
+  .bar-point__title { font-size: var(--text-h4); margin-bottom: var(--space-3); }
+  .bar-point p { max-width: 30ch; }
+</style>

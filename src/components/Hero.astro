@@ -1,0 +1,388 @@
+---
+/**
+ * Home hero.
+ * Left: headline (two lines, last word cycles), sub-line, order + Bulk & Gifting buttons.
+ * Right (above the text on phones): looping bar video over a still poster.
+ *
+ * Media files keep fixed names so sharper versions can be dropped in place:
+ *   public/video/hero-loop.mp4         + public/images/bar-hero.jpg         (desktop, 16:9)
+ *   public/video/hero-loop-mobile.mp4  + public/images/bar-hero-mobile.jpg  (phones, 9:16)
+ * After replacing a video, run: node scripts/strip-audio.mjs public/video/<file>.mp4
+ */
+import { getImage } from 'astro:assets';
+import OrderButton from './OrderButton.astro';
+import { productFacts } from '../data/site';
+import posterDesktopSrc from '../../public/images/bar-hero.jpg';
+import posterMobileSrc from '../../public/images/bar-hero-mobile.jpg';
+
+/** Words for the cycling last word. The first one is what the page says without JavaScript. */
+const cycleWords = ['day', 'meeting', 'journey', 'workout'];
+
+const MOBILE = '(max-width: 767.98px)';
+
+// Poster as AVIF/WebP in a few widths. Widths are capped at the source size,
+// so sharper source images automatically produce sharper output.
+const widthsFor = (max: number, list: number[]) => [...new Set(list.filter((w) => w < max).concat(max))];
+const build = async (src: ImageMetadata, widths: number[], format: 'avif' | 'webp') =>
+  getImage({ src, widths: widthsFor(src.width, widths), format, quality: format === 'avif' ? 60 : 72 });
+
+const [mAvif, mWebp, dAvif, dWebp] = await Promise.all([
+  build(posterMobileSrc, [480, 720, 1080], 'avif'),
+  build(posterMobileSrc, [480, 720, 1080], 'webp'),
+  build(posterDesktopSrc, [960, 1376, 1920, 2560], 'avif'),
+  build(posterDesktopSrc, [960, 1376, 1920, 2560], 'webp'),
+]);
+const fallback = await getImage({ src: posterDesktopSrc, width: Math.min(1376, posterDesktopSrc.width), format: 'jpg', quality: 75 });
+
+// Rendered size: phones show a square crop of the 9:16 poster (full width);
+// desktop shows a 4:3 crop of the 16:9 poster at about 48vw, so the image is ~64vw wide.
+const sizesMobile = '100vw';
+const sizesDesktop = '(min-width: 1960px) 1250px, 64vw';
+---
+
+<section class="hero" aria-labelledby="hero-title" data-hero>
+  <div class="hero__inner container">
+    <div class="hero__media" data-hero-media>
+      <div class="hero__tilt" data-hero-tilt>
+        <picture>
+          <source media={MOBILE} type="image/avif" srcset={mAvif.srcSet.attribute} sizes={sizesMobile} />
+          <source media={MOBILE} type="image/webp" srcset={mWebp.srcSet.attribute} sizes={sizesMobile} />
+          <source type="image/avif" srcset={dAvif.srcSet.attribute} sizes={sizesDesktop} />
+          <source type="image/webp" srcset={dWebp.srcSet.attribute} sizes={sizesDesktop} />
+          <img
+            class="hero__poster"
+            src={fallback.src}
+            width={posterDesktopSrc.width}
+            height={posterDesktopSrc.height}
+            alt="The ORVITO energy bar in its matte black wrapper, lit with a soft amber glow"
+            fetchpriority="high"
+            decoding="async"
+          />
+        </picture>
+        <video
+          class="hero__video"
+          muted
+          loop
+          playsinline
+          disablepictureinpicture
+          disableremoteplayback
+          preload="none"
+          aria-hidden="true"
+          tabindex="-1"
+          data-hero-video
+        >
+          <source src="/video/hero-loop-mobile.mp4" type="video/mp4" media={MOBILE} />
+          <source src="/video/hero-loop.mp4" type="video/mp4" />
+        </video>
+      </div>
+    </div>
+
+    <div class="hero__copy">
+      <h1 class="hero__title" id="hero-title">
+        <span class="hero__line"><span class="hero__line-inner" data-hero-line>Energy for the</span></span>{' '}
+        <span class="hero__line">
+          <span class="hero__line-inner" data-hero-line>
+            long <span class="visually-hidden">{cycleWords[0]}.</span><span class="hero__cycle" aria-hidden="true" data-hero-cycle>
+              {
+                cycleWords.map((word, i) => (
+                  <span class:list={['hero__word', { 'is-active': i === 0 }]} data-hero-word>
+                    {word}.
+                  </span>
+                ))
+              }
+            </span>
+          </span>
+        </span>
+      </h1>
+
+      <p class="hero__sub" data-hero-in>Makhana, dates, roasted nuts, seeds, chocolate and honey.</p>
+
+      <div class="hero__actions" data-hero-in>
+        <OrderButton size="lg" />
+        <a class="btn btn--outline btn--lg" href="/bulk-and-gifting">Bulk &amp; Gifting</a>
+      </div>
+      <p class="hero__note" data-hero-in>{productFacts.allergens}</p>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { gsap, registerMotion, ScrollTrigger } from '../scripts/motion';
+
+  const EASE = 'power3.out'; // matches --ease-out: fast start, long gentle settle
+
+  registerMotion(({ reduced, desktop, finePointer }) => {
+    const hero = document.querySelector<HTMLElement>('[data-hero]');
+    if (!hero) return;
+
+    const lines = hero.querySelectorAll<HTMLElement>('[data-hero-line]');
+    const rest = hero.querySelectorAll<HTMLElement>('[data-hero-in]');
+    const media = hero.querySelector<HTMLElement>('[data-hero-media]')!;
+    const tilt = hero.querySelector<HTMLElement>('[data-hero-tilt]')!;
+    const video = hero.querySelector<HTMLVideoElement>('[data-hero-video]')!;
+    const words = [...hero.querySelectorAll<HTMLElement>('[data-hero-word]')];
+    const cleanups: Array<() => void> = [];
+
+    // ---------- Entrance ----------
+    // Text was hidden by CSS (html.js) to avoid a flash; reveal it here.
+    if (reduced) {
+      gsap.fromTo([...lines, ...rest], { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.5, ease: 'power1.out', stagger: 0.05 });
+    } else {
+      const tl = gsap.timeline({ defaults: { ease: EASE } });
+      tl.fromTo(media, { scale: 0.97 }, { scale: 1, duration: 1.4 }, 0)
+        // Headline rises line by line out of its mask
+        .fromTo(lines, { yPercent: 125, autoAlpha: 1 }, { yPercent: 0, duration: 1, stagger: 0.1 }, 0.1)
+        // Then sub-line, buttons and note settle in
+        .fromTo(rest, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.7, stagger: 0.07 }, 0.55);
+    }
+
+    // ---------- Video ----------
+    // Reduced motion or data saver: keep the still poster.
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+    if (!reduced && !saveData) {
+      const onPlaying = () => video.classList.add('is-playing');
+      video.addEventListener('playing', onPlaying);
+      video.preload = 'auto';
+
+      // Play only while the hero is on screen (saves battery and data).
+      const io = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) video.play().catch(() => {}); // autoplay blocked: poster stays
+        else video.pause();
+      });
+      io.observe(hero);
+      cleanups.push(() => {
+        io.disconnect();
+        video.pause();
+        video.removeEventListener('playing', onPlaying);
+      });
+    }
+
+    // ---------- Cycling last word ----------
+    if (words.length > 1) {
+      let index = 0;
+      gsap.set(words.slice(1), { autoAlpha: 0, yPercent: reduced ? 0 : 100 });
+      const swap = () => {
+        const current = words[index];
+        index = (index + 1) % words.length;
+        const next = words[index];
+        if (reduced) {
+          gsap.to(current, { autoAlpha: 0, duration: 0.3, ease: 'power1.out' });
+          gsap.to(next, { autoAlpha: 1, duration: 0.3, ease: 'power1.out', delay: 0.15 });
+          return;
+        }
+        // Old word leaves upward, new word rises from below, overlapping slightly.
+        gsap.to(current, { yPercent: -100, autoAlpha: 0, duration: 0.4, ease: EASE });
+        gsap.fromTo(next, { yPercent: 100, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.6, ease: EASE, delay: 0.12 });
+      };
+      // Starts after the entrance; pauses when the hero is off screen.
+      // A repeating 2.6 s timeline that swaps the word at its end.
+      const loop = gsap.timeline({ repeat: -1, paused: true }).call(swap, [], 2.6);
+      const startDelay = gsap.delayedCall(reduced ? 1.5 : 2.2, () => loop.paused(false));
+      const st = ScrollTrigger.create({
+        trigger: hero,
+        start: 'top bottom',
+        end: 'bottom top',
+        onToggle: (self) => !startDelay.isActive() && loop.paused(!self.isActive),
+      });
+      cleanups.push(() => {
+        loop.kill();
+        startDelay.kill();
+        st.kill();
+      });
+    }
+
+    // ---------- Tilt towards the mouse (desktop, fine pointer) ----------
+    if (!reduced && desktop && finePointer) {
+      gsap.set(tilt, { transformPerspective: 1000 });
+      const rotY = gsap.quickTo(tilt, 'rotationY', { duration: 0.8, ease: EASE });
+      const rotX = gsap.quickTo(tilt, 'rotationX', { duration: 0.8, ease: EASE });
+      const MAX = 6; // degrees
+      const onMove = (e: PointerEvent) => {
+        const r = media.getBoundingClientRect();
+        const x = (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2);
+        const y = (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2);
+        rotY(gsap.utils.clamp(-1, 1, x) * MAX);
+        rotX(gsap.utils.clamp(-1, 1, y) * -MAX);
+      };
+      const onLeave = () => {
+        rotY(0);
+        rotX(0);
+      };
+      hero.addEventListener('pointermove', onMove);
+      hero.addEventListener('pointerleave', onLeave);
+      cleanups.push(() => {
+        hero.removeEventListener('pointermove', onMove);
+        hero.removeEventListener('pointerleave', onLeave);
+      });
+    }
+
+    return () => cleanups.forEach((fn) => fn());
+  });
+</script>
+
+<style>
+  .hero {
+    position: relative;
+    background: var(--color-bg); /* the backdrop the video blends with */
+    padding-top: calc(var(--nav-height) + env(safe-area-inset-top));
+    overflow: clip;
+  }
+  .hero__inner {
+    display: grid;
+    align-items: center;
+  }
+
+  /* ---------- Media ---------- */
+  .hero__media {
+    position: relative;
+    /* The footage is pure black. "lighten" against the hero background turns it into exactly
+       the page black, so no box shows. Set here, on the outermost (transformed) layer, because
+       the mask and transforms below each start a new group that would hide the backdrop. */
+    mix-blend-mode: lighten;
+  }
+  .hero__tilt {
+    position: relative;
+    aspect-ratio: 1 / 1; /* phones: square crop of the 9:16 video, which also hides its corner watermark */
+    /* Soft fade on every edge so the frame never shows */
+    -webkit-mask-image:
+      linear-gradient(to right, transparent, #000 10%, #000 90%, transparent),
+      linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to right, transparent, #000 10%, #000 90%, transparent),
+      linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent);
+    mask-composite: intersect;
+  }
+  .hero__poster,
+  .hero__video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .hero__video {
+    opacity: 0;
+    transition: opacity 600ms var(--ease-out);
+  }
+  .hero__video.is-playing { opacity: 1; }
+
+  /* ---------- Copy ---------- */
+  .hero__copy {
+    position: relative;
+    z-index: 1;
+    padding-bottom: var(--space-8);
+  }
+  .hero__title {
+    font-size: clamp(3rem, 1.59rem + 6.01vw, 7rem); /* 48px at 375, 112px at 1440 (Instrument Serif is narrow) */
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-wrap: initial;
+  }
+  .hero__line {
+    display: block;
+    overflow: clip;
+    /* Room for descenders (g, y) inside the mask */
+    padding-bottom: 0.22em;
+    margin-bottom: -0.22em;
+  }
+  .hero__line-inner {
+    display: block;
+    white-space: nowrap;
+  }
+
+  /* Cycling word: all words share one grid cell; only the active one is visible */
+  .hero__cycle {
+    display: inline-grid;
+    vertical-align: bottom;
+    overflow: clip;
+    padding-bottom: 0.22em;
+    margin-bottom: -0.22em;
+  }
+  .hero__word {
+    grid-area: 1 / 1;
+    visibility: hidden;
+  }
+  .hero__word.is-active { visibility: visible; }
+
+  .hero__sub {
+    margin-top: var(--space-5);
+    max-width: 26ch;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-regular);
+    line-height: 1.45;
+    color: var(--color-text);
+  }
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+  }
+  .hero__note {
+    margin-top: var(--space-3);
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    color: var(--color-text-muted);
+  }
+
+  /* Hidden until the entrance runs (only when JS is on; see BaseLayout) */
+  :global(.js) [data-hero-in],
+  :global(.js) .hero__line-inner {
+    opacity: 0;
+    visibility: hidden;
+  }
+  /* Failsafe: never leave the hero blank if a script fails */
+  :global(.js) [data-hero-in],
+  :global(.js) .hero__line-inner {
+    animation: hero-failsafe 0s linear 3s forwards;
+  }
+  @keyframes hero-failsafe {
+    to { opacity: 1; visibility: visible; }
+  }
+  /* The media is never hidden: the poster is the largest element and must paint early (LCP) */
+
+  /* ---------- Phones ---------- */
+  @media (max-width: 47.99rem) {
+    .hero__media {
+      margin-inline: calc(var(--gutter) * -1);
+      margin-top: calc(var(--space-4) * -1);
+    }
+    .hero__copy { margin-top: calc(var(--space-6) * -1); }
+    .hero__sub { margin-top: var(--space-4); }
+    .hero__actions { margin-top: var(--space-5); gap: var(--space-2); flex-wrap: nowrap; }
+    /* Both buttons on one row at 375px */
+    .hero__actions :global(.btn) {
+      flex: 1 1 auto;
+      min-height: 48px;
+      padding-inline: var(--space-3);
+      font-size: var(--text-sm);
+    }
+  }
+
+  /* ---------- Desktop ---------- */
+  @media (min-width: 48rem) {
+    .hero__inner {
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      min-height: min(100svh - var(--nav-height), 54rem);
+    }
+    .hero__copy {
+      grid-column: 1;
+      grid-row: 1;
+      padding-block: var(--space-8);
+    }
+    .hero__media {
+      grid-column: 2;
+      grid-row: 1;
+      /* Larger than its column so the bar has room; the faded edges overlap the text column */
+      width: min(48vw, 940px);
+      justify-self: center;
+      margin-inline: -8%;
+    }
+    .hero__tilt { aspect-ratio: 4 / 3; } /* 4:3 crop of the 16:9 video: hides the corner watermark */
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero__video { display: none; }
+  }
+</style>

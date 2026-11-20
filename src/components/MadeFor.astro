@@ -1,0 +1,130 @@
+---
+/**
+ * "Made for": four occasions as dark cards with a photo and one short line.
+ * Photos go in public/images/made-for/<id>.jpg (portrait 4:5). Until they exist,
+ * each card shows a blank grey photo area. Never use photos of people as fake customers.
+ * Current photos: the client's lifestyle images (20 Nov 2026), cropped 4:5. "100% Natural" was retouched
+ * off the wrappers (not allowed under FSSAI claim rules), and a ® mark off the Long journeys wrapper
+ * (ORVITO is not a registered trademark yet). To hide a photo while a new one is made, add pendingPhoto: true.
+ */
+import { Picture } from 'astro:assets';
+
+const occasions = [
+  { id: 'busy-days', title: 'Busy days', line: 'For the meeting that runs into lunch.', alt: 'A skateboarder mid-jump, holding out an ORVITO bar' },
+  { id: 'long-journeys', title: 'Long journeys', line: 'Sealed, 60 g and easy to carry on the road.', alt: 'A sand-coloured backpack on an airport seat by the window, with an ORVITO bar in its front pocket' },
+  { id: 'between-meals', title: 'Between meals', line: 'For when dinner is still hours away.', alt: 'A hand taking an ORVITO bar out of a leather bag' },
+  { id: 'extra-energy', title: 'Extra energy', line: 'Before the gym, the trek or the late shift.', alt: 'A woman at the gym taking an ORVITO bar out of her bag' },
+  { id: 'outdoor-activities', title: 'Outdoor activities', line: 'In the kit bag for the match, the ride or a day outdoors.', alt: 'An orange sports bag on stadium seats with three ORVITO bars inside and a hand reaching for one' },
+];
+
+const photos = import.meta.glob<{ default: ImageMetadata }>('../../public/images/made-for/*.{jpg,jpeg,png,webp}', {
+  eager: true,
+});
+const photoFor = (id: string) =>
+  Object.entries(photos).find(([path]) => path.includes(`/made-for/${id}.`))?.[1].default;
+---
+
+<section class="made-for section" aria-labelledby="made-for-title">
+  <div class="container">
+    <div class="section-head">
+      <h2 id="made-for-title" data-split>Made for</h2>
+      <p data-reveal>A proper snack for the hours in between.</p>
+    </div>
+
+    <ul class="made-for__grid" role="list" data-stagger>
+      {
+        occasions.map((o) => {
+          const photo = 'pendingPhoto' in o && o.pendingPhoto ? undefined : photoFor(o.id);
+          return (
+            <li class="occasion" data-stagger-item>
+              <div class="occasion__photo">
+                {photo ? (
+                  <Picture
+                    src={photo}
+                    formats={['avif', 'webp']}
+                    widths={[320, 480, 720]}
+                    sizes="(min-width: 64rem) 240px, (min-width: 40rem) 38vw, 72vw"
+                    alt={o.alt}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : null}
+              </div>
+              <div class="occasion__text">
+                <h3 class="occasion__title">{o.title}</h3>
+                <p class="occasion__line">{o.line}</p>
+              </div>
+            </li>
+          );
+        })
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .made-for__grid {
+    list-style: none;
+    padding: 0;
+    margin-top: var(--space-8);
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+  .occasion {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    transition: transform var(--duration-base) var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .occasion:hover { transform: translateY(-4px); }
+  }
+  .occasion__photo {
+    aspect-ratio: 4 / 5;
+    background: var(--color-placeholder-dark);
+  }
+  .occasion__photo :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .occasion__text { padding: var(--space-4) var(--space-4) var(--space-5); }
+  .occasion__title {
+    font-size: var(--text-h4);
+    line-height: 1.1;
+  }
+  .occasion__line {
+    margin-top: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  /* Desktop: five in a row. Tablets and phones: a swipeable row. */
+  @media (max-width: 63.99rem) {
+    .made-for__grid {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      margin-inline: calc(var(--gutter) * -1);
+      padding-inline: var(--gutter);
+      scroll-padding-inline: var(--gutter);
+      scrollbar-width: none;
+    }
+    .made-for__grid::-webkit-scrollbar { display: none; }
+    .occasion {
+      flex: 0 0 38%;
+      scroll-snap-align: start;
+    }
+  }
+  @media (max-width: 39.99rem) {
+    .occasion { flex-basis: 72%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .occasion { transition: none; }
+  }
+</style>

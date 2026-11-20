@@ -1,0 +1,65 @@
+---
+/** Terms of sale (draft). Ordering, prices and payment as confirmed by the client; the rest is marked pending. */
+import LegalLayout from '../layouts/LegalLayout.astro';
+import Pending from '../components/Pending.astro';
+import { business, isPending, legal, ordering, productFacts, site } from '../data/site';
+
+const known = (v: string | null) => (isPending(v) ? null : v);
+const charges = isPending(ordering.deliveryCharges) ? null : ordering.deliveryCharges;
+---
+
+<LegalLayout
+  title="Terms"
+  description="The terms for ordering ORVITO bars on WhatsApp: ordering, prices, payment, delivery and returns."
+  intro="The terms for buying ORVITO bars through this website and WhatsApp."
+>
+  <h2>About these terms</h2>
+  <p>
+    {site.url.replace('https://', '')} is run by {known(business.legalName) ?? <Pending>Registered business name</Pending>}{' '}
+    ("ORVITO", "we"). By placing an order you agree to these terms.
+  </p>
+
+  <h2>Ordering</h2>
+  <p>
+    Orders are placed on WhatsApp. Choosing a pack on this website prepares a message; your order is accepted only
+    when we confirm it on WhatsApp. If we can't fulfil an order, we will tell you there.
+  </p>
+
+  <h2>Prices</h2>
+  <p>
+    Prices are in Indian rupees. The MRP shown is inclusive of all taxes. Delivery charges:{' '}
+    {charges ?? <Pending>Delivery charges</Pending>}
+  </p>
+
+  <h2>Payment</h2>
+  <p>
+    You pay by {ordering.paymentMethod}. We don't offer cash on delivery. Your order is dispatched once payment is
+    received.
+  </p>
+
+  <h2>The product</h2>
+  <p>
+    Each bar is {productFacts.netQuantityGrams} g. Ingredients: {productFacts.ingredientsLabelText}.{' '}
+    {productFacts.allergens} If you have a food allergy, please read the label before eating.
+  </p>
+  <p>Photos on this website show the product as closely as we can, but each bar is made in small batches and can look a little different.</p>
+
+  <h2>Delivery, cancellations and returns</h2>
+  <p>
+    See our <a href="/shipping">shipping policy</a> and <a href="/returns">returns and refunds policy</a>.
+  </p>
+
+  <h2>Bulk orders</h2>
+  <p>
+    Prices, quantities and delivery dates for bulk and gifting orders are agreed on WhatsApp before the order is
+    confirmed.
+  </p>
+
+  <h2>Our content</h2>
+  <p>The ORVITO name, logo, photos and text on this website belong to ORVITO. Please ask before using them.</p>
+
+  <h2>Law</h2>
+  <p>
+    These terms are governed by the laws of India. Courts: {known(legal.jurisdiction) ?? <Pending>Courts for disputes</Pending>}
+  </p>
+</LegalLayout>

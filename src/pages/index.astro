@@ -1,0 +1,25 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import UnwrapSequence from '../components/UnwrapSequence.astro';
+import Ingredients from '../components/Ingredients.astro';
+import HoneyBand from '../components/HoneyBand.astro';
+import MadeFor from '../components/MadeFor.astro';
+import Packs from '../components/Packs.astro';
+import FounderNote from '../components/FounderNote.astro';
+import BulkTeaser from '../components/BulkTeaser.astro';
+import FaqPreview from '../components/FaqPreview.astro';
+---
+
+<BaseLayout>
+  <Hero />
+  <UnwrapSequence />
+  <Ingredients />
+  <HoneyBand />
+  {/* CutBar (the unwrapped bar photo) was taken off the home page on 20 Nov 2026; the client will place it elsewhere. */}
+  <MadeFor />
+  <Packs />
+  <FounderNote />
+  <BulkTeaser />
+  <FaqPreview />
+</BaseLayout>

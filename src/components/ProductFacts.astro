@@ -1,0 +1,160 @@
+---
+/**
+ * The Bar page: label details (net quantity, MRP, shelf life, storage, veg mark, ingredients,
+ * allergens, FSSAI, manufacturer, customer care) and the nutrition table per 100 g and per 60 g bar.
+ * Every value comes from src/data. Pending values show as marked placeholders, never invented numbers.
+ */
+import { business, isPending, nutrition, nutritionPending, productFacts } from '../data/site';
+import { formatPrice, packs, unitPrice } from '../data/products';
+
+const known = (value: string | null) => (isPending(value) ? null : value);
+const singlePrice = unitPrice(packs[0]);
+const care = business.customerCare;
+
+type Fact = { label: string; value: string | null; placeholder?: string; veg?: boolean };
+const facts: Fact[] = [
+  { label: 'Net quantity', value: `${productFacts.netQuantityGrams} g` },
+  { label: 'Format', value: productFacts.format },
+  { label: 'MRP', value: singlePrice !== null ? `${formatPrice(singlePrice)} per bar, inclusive of all taxes` : null, placeholder: 'MRP' },
+  { label: 'Ingredients', value: productFacts.ingredientsLabelText },
+  { label: 'Allergens', value: productFacts.allergens },
+  { label: 'Shelf life', value: productFacts.shelfLife },
+  { label: 'Storage', value: productFacts.storage },
+  { label: 'Food type', value: productFacts.vegMark ? 'Vegetarian' : null, veg: productFacts.vegMark, placeholder: 'Veg mark' },
+  // Hidden until the FSSAI licence number is added in src/data/site.ts.
+  ...(known(business.fssaiLicence) ? [{ label: 'FSSAI Lic. No.', value: known(business.fssaiLicence) }] : []),
+  { label: 'Made by', value: known(business.legalName), placeholder: 'Registered business name' },
+  { label: 'Address', value: known(business.address), placeholder: 'Registered business address' },
+  {
+    label: 'Customer care',
+    value: isPending(care.name) ? null : `${care.name}, ${care.phone}, ${care.email}`,
+    placeholder: `Customer care name · ${care.phone} · ${care.email}`,
+  },
+];
+
+const fmt = (n: number | null, unit: string) => (n === null ? null : `${n} ${unit}`);
+---
+
+<section class="facts section" aria-labelledby="facts-title">
+  <div class="container facts__grid">
+    <div class="facts__col">
+      <span class="eyebrow" data-reveal>On the label</span>
+      <h2 id="facts-title" class="facts__title" data-split>Product details</h2>
+      <dl class="facts__list" data-stagger>
+        {
+          facts.map((f) => (
+            <div class="facts__row" data-stagger-item>
+              <dt>{f.label}</dt>
+              <dd>
+                {f.veg && <span class="veg-mark" role="img" aria-label="Vegetarian mark" />}
+                {f.value ?? <span class="pending">[{f.placeholder}]</span>}
+              </dd>
+            </div>
+          ))
+        }
+      </dl>
+    </div>
+
+    <div class="facts__col">
+      <span class="eyebrow" data-reveal>Nutrition</span>
+      <h2 class="facts__title" data-split>Nutrition information</h2>
+      <div class="nutrition" data-reveal>
+        <table>
+          <caption class="visually-hidden">Approximate nutrition values per 100 g and per 60 g bar</caption>
+          <thead>
+            <tr>
+              <th scope="col">Nutrient</th>
+              <th scope="col">Per 100 g</th>
+              <th scope="col">Per bar ({productFacts.netQuantityGrams} g)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              nutrition.map((n) => (
+                <tr>
+                  <th scope="row">{n.label}</th>
+                  <td>{fmt(n.per100g, n.unit) ?? <span class="nutrition__dash" aria-label="to be confirmed">—</span>}</td>
+                  <td>{fmt(n.perBar, n.unit) ?? <span class="nutrition__dash" aria-label="to be confirmed">—</span>}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+        {
+          nutritionPending && (
+            <p class="nutrition__note">
+              <span class="pending">[Nutrition values will be added from the lab report.]</span>
+            </p>
+          )
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .facts__grid {
+    display: grid;
+    gap: var(--space-9) var(--space-8);
+  }
+  @media (min-width: 64rem) {
+    .facts__grid { grid-template-columns: 1.1fr 1fr; align-items: start; }
+  }
+  .facts .eyebrow { margin-bottom: var(--space-4); }
+  .facts__title { font-size: var(--text-h2); margin-bottom: var(--space-6); }
+
+  .facts__list { border-top: var(--border); }
+  .facts__row {
+    display: grid;
+    grid-template-columns: minmax(7.5rem, 11rem) 1fr;
+    gap: var(--space-4);
+    padding: var(--space-4) 0;
+    border-bottom: var(--border);
+  }
+  .facts__row dt { font-family: var(--font-mono); font-size: var(--text-label); letter-spacing: var(--tracking-mono); text-transform: uppercase; color: var(--color-text-muted); padding-top: 0.2em; }
+  .facts__row dd { color: var(--color-white); display: flex; align-items: baseline; gap: var(--space-3); }
+
+  /* Indian veg mark: green square outline with a green dot. */
+  .veg-mark {
+    flex: none;
+    position: relative;
+    top: 0.15em;
+    width: 1rem;
+    height: 1rem;
+    border: 1.5px solid #1f9d55;
+    border-radius: 2px;
+    background: radial-gradient(circle, #1f9d55 0 34%, transparent 36%);
+    background-color: #fff;
+  }
+
+  .nutrition table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .nutrition th,
+  .nutrition td {
+    padding: var(--space-3) 0;
+    border-bottom: var(--border);
+    text-align: left;
+  }
+  .nutrition thead th {
+    font-size: var(--text-label);
+    letter-spacing: var(--tracking-mono);
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    font-weight: var(--weight-regular);
+    border-bottom-color: rgb(255 255 255 / 0.3);
+  }
+  .nutrition td,
+  .nutrition thead th:not(:first-child) { text-align: right; }
+  .nutrition tbody th { color: var(--color-white); font-weight: var(--weight-regular); }
+  .nutrition__dash { color: var(--color-text-muted); }
+  .nutrition__note { margin-top: var(--space-4); font-family: var(--font-mono); font-size: var(--text-label); }
+
+  @media (max-width: 30rem) {
+    .facts__row { grid-template-columns: 1fr; gap: var(--space-1); }
+  }
+</style>

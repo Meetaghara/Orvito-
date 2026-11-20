@@ -1,0 +1,142 @@
+---
+/**
+ * Our Story: the founder's note, how the bars are made and where.
+ * Only facts the client has confirmed (client-details.md). The longer founder story and
+ * the photos (founder, kitchen, batches) are still to come from the client.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import FounderNote from '../components/FounderNote.astro';
+import OrderButton from '../components/OrderButton.astro';
+import OrderNotes from '../components/OrderNotes.astro';
+import { productFacts } from '../data/site';
+
+const principles = [
+  {
+    n: '01',
+    title: 'Ingredients you can name',
+    line: 'Eight of them, all on the label: makhana, dates, pumpkin seeds, roasted chana dal, almonds, peanuts, chocolate and honey.',
+  },
+  {
+    n: '02',
+    title: 'Made in small batches',
+    line: 'Every bar is made at home in Rajkot, a few batches at a time.',
+  },
+  {
+    n: '03',
+    title: 'Built to carry',
+    line: `A sealed ${productFacts.netQuantityGrams} g bar that keeps for ${productFacts.shelfLife.replace(' from the date of manufacture', '')}, for the days that run long.`,
+  },
+];
+---
+
+<BaseLayout
+  title="Our Story"
+  description="ORVITO is made at home in Rajkot, Gujarat, in small batches, by founder Hem Mehta."
+>
+  <PageHero
+    eyebrow="Our Story"
+    title="Made in small batches, in Rajkot."
+    italic="in Rajkot."
+    intro="ORVITO started in a home kitchen in Gujarat, with one idea: a snack made from food you can recognise."
+  />
+
+  <FounderNote />
+
+  <section class="principles section" aria-labelledby="principles-title">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow" data-reveal>How we make it</span>
+        <h2 id="principles-title" data-split>Three things we hold to</h2>
+      </div>
+      <ol class="principles__list" role="list">
+        {
+          principles.map((p) => (
+            <li class="principle">
+              <span class="principle__rule" aria-hidden="true" data-draw />
+              <span class="principle__n" data-reveal>{p.n}</span>
+              <h3 class="principle__title" data-split>{p.title}</h3>
+              <p class="principle__line" data-reveal>{p.line}</p>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </section>
+
+  <section class="story-photos section" aria-label="Photos from the kitchen">
+    <div class="container story-photos__grid" data-stagger>
+      <div class="story-photos__item story-photos__item--tall" data-stagger-item>
+        <span class="photo-placeholder">Photo: the kitchen in Rajkot</span>
+      </div>
+      <div class="story-photos__item" data-stagger-item>
+        <span class="photo-placeholder">Photo: a batch being made</span>
+      </div>
+      <div class="story-photos__item" data-stagger-item>
+        <span class="photo-placeholder">Photo: bars being sealed and packed</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="story-cta section" aria-labelledby="story-cta-title">
+    <div class="container story-cta__inner">
+      <h2 id="story-cta-title" data-split>Try a bar.</h2>
+      <p data-reveal>Order a single bar or a box on WhatsApp. We confirm your order there.</p>
+      <div class="story-cta__actions" data-reveal>
+        <OrderButton size="lg" />
+        <a class="btn btn--outline btn--lg" href="/the-bar">See the bar</a>
+      </div>
+      <OrderNotes class="story-cta__notes" />
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .principles__list { border-top: 0; list-style: none; padding: 0; margin: 0; }
+  .principle {
+    display: grid;
+    grid-template-columns: 4rem 1fr;
+    gap: var(--space-2) var(--space-5);
+    padding-block: var(--space-7);
+    position: relative;
+  }
+  .principle__rule {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: rgb(255 255 255 / 0.2);
+  }
+  .principle__n {
+    grid-row: span 2;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--color-honey);
+    line-height: 1.6;
+  }
+  .principle__title { font-size: var(--text-h3); }
+  .principle__line { max-width: 44ch; }
+  @media (min-width: 64rem) {
+    .principle { grid-template-columns: 6rem 1fr 1fr; align-items: baseline; }
+    .principle__n { grid-row: auto; }
+  }
+
+  .story-photos__grid {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: 1fr 1fr;
+  }
+  .story-photos__item {
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    aspect-ratio: 4 / 5;
+  }
+  .story-photos__item--tall { grid-column: span 2; aspect-ratio: 16 / 9; }
+  @media (min-width: 64rem) {
+    .story-photos__grid { grid-template-columns: 1.4fr 1fr 1fr; align-items: end; }
+    .story-photos__item--tall { grid-column: auto; aspect-ratio: 4 / 5; }
+  }
+
+  .story-cta__inner { text-align: center; display: grid; justify-items: center; gap: var(--space-5); }
+  .story-cta h2 { font-size: var(--text-h2); }
+  .story-cta__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: center; }
+</style>

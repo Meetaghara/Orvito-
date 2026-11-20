@@ -1,0 +1,25 @@
+---
+/**
+ * ORVITO wordmark. Set in a five-letter subset of Bodoni Moda (matches the logo on the pack)
+ * until the client's logo file arrives. The rest of the site does not use this font.
+ * TODO: replace with the client's logo (SVG) when it is supplied.
+ */
+interface Props {
+  as?: 'span' | 'p';
+  class?: string;
+}
+const { as: Tag = 'span', class: className } = Astro.props;
+---
+
+<Tag class:list={['wordmark', className]}>ORVITO</Tag>
+
+<style>
+  .wordmark {
+    font-family: var(--font-logo);
+    font-weight: var(--weight-regular);
+    color: var(--color-white);
+    letter-spacing: 0.04em;
+    line-height: 1;
+    font-variation-settings: 'opsz' 28;
+  }
+</style>

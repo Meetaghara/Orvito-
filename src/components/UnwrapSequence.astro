@@ -1,0 +1,270 @@
+---
+/**
+ * Signature moment: the wrapper opens as the visitor scrolls.
+ * The section pins and plays an image sequence (cut from public/video/unwrap.mp4)
+ * frame by frame, tied to scroll, with a thin progress line so it reads as scroll-driven.
+ * "Sealed for the long day." shows while the bar is sealed; "Inside, eight ingredients..."
+ * arrives as the ingredients spill out.
+ *
+ * Frames: only the part of the clip where the wrapper actually opens (1.0 s to 3.9 s, 24 fps),
+ * so every bit of scrolling shows change (the rest of the clip barely moves).
+ *   desktop/001-070.webp (960x720) and mobile/001-035.webp (720x540, every other frame).
+ * They are 4:3 crops of the 360p draft, upscaled with Real-ESRGAN (realesr-general-x4v3) and
+ * resized down. When a sharper unwrap.mp4 arrives (720p or 1080p), regenerate them from the same
+ * 1.0-3.9 s range (crop=iw*0.75:ih:iw*0.125:0, 24 fps), check the corner mark stays out of the
+ * crop, and keep the frame counts below in step.
+ *
+ * Reduced motion: no pin and no scrubbing; the opened bar is shown as a still image.
+ */
+const FRAMES = { desktop: 70, mobile: 35 };
+---
+
+<section class="unwrap" aria-labelledby="unwrap-caption-1" data-unwrap data-frames-desktop={FRAMES.desktop} data-frames-mobile={FRAMES.mobile}>
+  <div class="unwrap__media" data-unwrap-media>
+    <canvas class="unwrap__canvas" aria-hidden="true" data-unwrap-canvas></canvas>
+    <img
+      class="unwrap__still"
+      src={`/frames/unwrap/desktop/${String(FRAMES.desktop).padStart(3, '0')}.webp`}
+      alt="An ORVITO bar with its wrapper peeled back, showing makhana, almonds and pumpkin seeds inside"
+      width="960"
+      height="720"
+      loading="lazy"
+      decoding="async"
+    />
+  </div>
+
+  <div class="unwrap__captions">
+    <p class="unwrap__caption" data-unwrap-caption>Sealed for the long day.</p>
+    <p class="unwrap__caption unwrap__caption--second" id="unwrap-caption-1" data-unwrap-caption>
+      Inside, eight ingredients <em>you can name.</em>
+    </p>
+  </div>
+  <p class="unwrap__hint" aria-hidden="true" data-unwrap-hint>Scroll to open</p>
+  <div class="unwrap__progress" aria-hidden="true"><span data-unwrap-progress></span></div>
+</section>
+
+<script>
+  import { gsap, registerMotion } from '../scripts/motion';
+
+  registerMotion(({ reduced, mobile }) => {
+    const root = document.querySelector<HTMLElement>('[data-unwrap]');
+    if (!root) return;
+
+    if (reduced) {
+      root.classList.add('is-static');
+      return () => root.classList.remove('is-static');
+    }
+
+    const canvas = root.querySelector<HTMLCanvasElement>('[data-unwrap-canvas]')!;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const media = root.querySelector<HTMLElement>('[data-unwrap-media]')!;
+    const [first, second] = root.querySelectorAll<HTMLElement>('[data-unwrap-caption]');
+    const hint = root.querySelector<HTMLElement>('[data-unwrap-hint]')!;
+    const progress = root.querySelector<HTMLElement>('[data-unwrap-progress]')!;
+
+    const set = mobile ? 'mobile' : 'desktop';
+    const count = Number(root.dataset[mobile ? 'framesMobile' : 'framesDesktop']);
+    const frames: HTMLImageElement[] = [];
+    const state = { frame: 0 };
+    let drawn = -1;
+
+    // Cover-fit the frame into the canvas (the canvas keeps the same 4:3 shape, so this is exact).
+    const draw = () => {
+      let i = Math.round(state.frame);
+      // Use the nearest earlier frame that has loaded, so fast scrolling never shows a gap.
+      while (i > 0 && !frames[i]?.naturalWidth) i--;
+      const img = frames[i];
+      if (!img?.naturalWidth || i === drawn) return;
+      drawn = i;
+      const { width: cw, height: ch } = canvas;
+      const scale = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
+      const w = img.naturalWidth * scale;
+      const h = img.naturalHeight * scale;
+      ctx.clearRect(0, 0, cw, ch);
+      // Highest-quality scaling (the context resets this whenever the canvas is resized).
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+    };
+
+    const load = (i: number) => {
+      if (frames[i]) return;
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => {
+        if (i <= Math.round(state.frame)) {
+          drawn = -1;
+          draw();
+        }
+      };
+      img.src = `/frames/unwrap/${set}/${String(i + 1).padStart(3, '0')}.webp`;
+      frames[i] = img;
+    };
+
+    const resize = () => {
+      const r = canvas.getBoundingClientRect();
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = Math.round(r.width * dpr);
+      canvas.height = Math.round(r.height * dpr);
+      drawn = -1;
+      draw();
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    // First frame now so the stage is never empty; the rest only when the section is getting close.
+    load(0);
+    const preload = gsap.timeline({
+      scrollTrigger: {
+        trigger: root,
+        start: 'top 250%',
+        once: true,
+        onEnter: () => {
+          for (let i = 1; i < count; i++) load(i);
+        },
+      },
+    });
+
+    // Scroll-scrubbed sequence (timeline length 1 = the whole pinned scroll).
+    // The frames play over the first 85%, then the opened bar holds while the line completes.
+    // Caption timings follow the footage: the wrapper starts to tear about 10% in,
+    // and the ingredients spill out about 60% in.
+    const FRAMES_END = 0.85;
+    const tl = gsap.timeline({
+      defaults: { ease: 'none' },
+      scrollTrigger: {
+        trigger: root,
+        start: 'top top',
+        end: mobile ? '+=110%' : '+=150%',
+        pin: true,
+        scrub: mobile ? 0.4 : true, // the smoother eases desktop; touch gets a little lag of its own
+        invalidateOnRefresh: true,
+      },
+    });
+    tl.to(state, { frame: count - 1, duration: FRAMES_END, onUpdate: draw }, 0)
+      .fromTo(media, { scale: 0.94 }, { scale: 1, duration: FRAMES_END }, 0)
+      .fromTo(progress, { scaleX: 0 }, { scaleX: 1, duration: 1 }, 0)
+      .to(hint, { autoAlpha: 0, duration: 0.06 }, 0.03)
+      .to(first, { autoAlpha: 0, yPercent: -40, duration: 0.1, ease: 'power2.out' }, 0.08)
+      .fromTo(second, { autoAlpha: 0, yPercent: 40 }, { autoAlpha: 1, yPercent: 0, duration: 0.14, ease: 'power3.out' }, 0.55);
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      preload.kill();
+      tl.kill();
+    };
+  });
+</script>
+
+<style>
+  .unwrap {
+    position: relative;
+    height: 100svh;
+    min-height: 32rem;
+    display: grid;
+    place-items: center;
+    background: var(--color-bg);
+    overflow: clip;
+  }
+
+  .unwrap__media {
+    position: relative;
+    width: min(100vw, 46rem);
+    aspect-ratio: 4 / 3;
+    /* Same trick as the hero: the footage is near-black, "lighten" makes it the page black. */
+    mix-blend-mode: lighten;
+    -webkit-mask-image:
+      linear-gradient(to right, transparent, #000 12%, #000 88%, transparent),
+      linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to right, transparent, #000 12%, #000 88%, transparent),
+      linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+    mask-composite: intersect;
+  }
+  @media (min-width: 48rem) {
+    .unwrap__media { width: min(64vw, 58rem); }
+  }
+
+  .unwrap__canvas,
+  .unwrap__still {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  /* With JS the canvas draws the frames; the still is the no-JS and reduced-motion view. */
+  :global(.js) .unwrap__still { visibility: hidden; }
+  .unwrap.is-static .unwrap__still { visibility: visible; }
+  .unwrap.is-static .unwrap__canvas { display: none; }
+
+  .unwrap__captions {
+    position: absolute;
+    inset-inline: var(--gutter);
+    bottom: max(var(--space-8), 9svh);
+    display: grid;
+    text-align: center;
+    pointer-events: none;
+  }
+  .unwrap__caption {
+    grid-area: 1 / 1;
+    font-family: var(--font-serif);
+    font-size: var(--text-h3);
+    line-height: 1.1;
+    color: var(--color-white);
+  }
+  .unwrap__caption em { font-style: italic; }
+  :global(.js) .unwrap__caption--second { opacity: 0; visibility: hidden; }
+  .unwrap.is-static .unwrap__caption:first-child { visibility: hidden; }
+  .unwrap.is-static .unwrap__caption--second { opacity: 1; visibility: visible; }
+
+  .unwrap__hint {
+    position: absolute;
+    top: var(--space-6);
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    letter-spacing: var(--tracking-mono);
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+  .unwrap.is-static .unwrap__hint { display: none; }
+
+  /* Thin scroll-progress line under the captions */
+  .unwrap__progress {
+    position: absolute;
+    left: 50%;
+    bottom: max(var(--space-6), 4svh);
+    width: 6rem;
+    height: 1px;
+    transform: translateX(-50%);
+    background: rgb(255 255 255 / 0.18);
+    overflow: hidden;
+  }
+  .unwrap__progress span {
+    display: block;
+    height: 100%;
+    background: var(--color-honey);
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+  }
+  .unwrap.is-static .unwrap__progress { display: none; }
+
+  /* Phones: lift the captions and the line above the sticky order bar */
+  @media (max-width: 56.24rem) {
+    .unwrap__captions { bottom: calc(var(--sticky-cta-height) + env(safe-area-inset-bottom) + var(--space-7)); }
+    .unwrap__progress { bottom: calc(var(--sticky-cta-height) + env(safe-area-inset-bottom) + var(--space-4)); }
+  }
+
+  /* Reduced motion: a normal section, no full-screen pin */
+  .unwrap.is-static {
+    height: auto;
+    min-height: 0;
+    padding-block: var(--section-space);
+    gap: var(--space-6);
+  }
+  .unwrap.is-static .unwrap__captions { position: static; }
+</style>

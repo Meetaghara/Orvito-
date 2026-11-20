@@ -1,0 +1,43 @@
+---
+/** Home page teaser for hotels, offices and gifting, linking to the Bulk & Gifting page. */
+import { bulk } from '../data/site';
+---
+
+<section class="bulk-teaser section" aria-labelledby="bulk-teaser-title">
+  <div class="container">
+    <div class="bulk-teaser__card">
+      <div>
+        <span class="eyebrow">Bulk &amp; gifting</span>
+        <h2 id="bulk-teaser-title" data-split>For hotels, offices <em>and gifting.</em></h2>
+      </div>
+      <div class="bulk-teaser__side" data-reveal>
+        <p>
+          Minimum order {bulk.minimumOrderText}. {bulk.giftBoxes}. Delivery in {bulk.leadTime}.
+        </p>
+        <a class="btn btn--outline btn--lg" href="/bulk-and-gifting">Enquire about bulk orders</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .bulk-teaser__card {
+    display: grid;
+    gap: var(--space-6);
+    padding: clamp(2rem, 1rem + 4vw, 4.5rem);
+    border: var(--border);
+    border-radius: var(--radius-card);
+    background:
+      radial-gradient(120% 140% at 100% 0%, rgb(200 144 46 / 0.12), transparent 55%),
+      var(--color-surface);
+  }
+  .bulk-teaser__card .eyebrow { margin-bottom: var(--space-4); }
+  .bulk-teaser__card h2 em { font-style: italic; }
+  .bulk-teaser__side p { margin-bottom: var(--space-5); max-width: 30rem; }
+  @media (min-width: 56rem) {
+    .bulk-teaser__card {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      align-items: end;
+    }
+  }
+</style>

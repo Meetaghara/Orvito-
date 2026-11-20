@@ -1,0 +1,67 @@
+---
+/**
+ * The one order button used across the site.
+ * mode="whatsapp" opens a pre-filled wa.me chat (now).
+ * mode="checkout" is reserved for a payment gateway later; it links to /checkout.
+ */
+import type { PackId } from '../data/products';
+import { buildWhatsAppLink, whatsappNumberPending } from '../lib/whatsapp';
+
+interface Props {
+  mode?: 'whatsapp' | 'checkout';
+  variant?: 'solid' | 'outline';
+  size?: 'sm' | 'md' | 'lg';
+  label?: string;
+  packId?: PackId;
+  quantity?: number;
+  class?: string;
+}
+
+const {
+  mode = 'whatsapp',
+  variant = 'solid',
+  size = 'md',
+  label = mode === 'whatsapp' ? 'Order on WhatsApp' : 'Order now',
+  packId,
+  quantity,
+  class: className,
+} = Astro.props;
+
+const isWhatsApp = mode === 'whatsapp';
+const href = isWhatsApp ? buildWhatsAppLink({ packId, quantity }) : '/checkout';
+---
+
+<a
+  class:list={['btn', `btn--${variant}`, `btn--${size}`, className]}
+  href={href}
+  data-order-button
+  data-mode={mode}
+  data-pack={packId}
+  data-quantity={quantity}
+  data-cursor={isWhatsApp ? 'Order' : undefined}
+  data-pending={isWhatsApp && whatsappNumberPending ? 'whatsapp-number' : undefined}
+  {...isWhatsApp ? { target: '_blank', rel: 'noopener' } : {}}
+>
+  <span>{label}</span>
+  {isWhatsApp && <span class="visually-hidden"> (opens WhatsApp)</span>}
+</a>
+
+<script>
+  import { buildWhatsAppLink, createOrderRef } from '../lib/whatsapp';
+  import type { PackId } from '../data/products';
+
+  // Give every order a fresh reference at the moment it is clicked.
+  // Delegated on document, so it survives View Transition page swaps.
+  document.addEventListener('click', (event) => {
+    const button = (event.target as Element | null)?.closest<HTMLAnchorElement>(
+      'a[data-order-button][data-mode="whatsapp"]'
+    );
+    if (!button) return;
+    const { pack, quantity } = button.dataset;
+    button.href = buildWhatsAppLink({
+      packId: pack as PackId | undefined,
+      quantity: quantity ? Number(quantity) : undefined,
+      ref: createOrderRef(),
+    });
+  });
+</script>

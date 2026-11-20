@@ -1,0 +1,600 @@
+---
+/**
+ * "Find the bar": an ORVITO bar is hidden in a painting. Opened from the Box of 12 card (Packs.astro).
+ * Finding it unlocks findTheBar.discountPercent off one Box of 12, claimed on WhatsApp with a code.
+ *
+ * - Desktop: a magnifying loupe follows the pointer; click to check a spot.
+ * - Phones: the painting is shown large; swipe to explore, tap to check.
+ * - Keyboard: arrow keys move the loupe (Shift for small steps), Enter or Space checks.
+ * - Misses leave a fading ring; hints appear after 4 and 8 misses.
+ *
+ * Scene: public/images/hunt/scene.jpg, the painting with the bar composited onto the stall table,
+ * left of centre. The hit area (data-spot, base64 of percentages: x0,y0,x1,y1,cx,cy,w) is that bar
+ * plus a small margin. If the scene is changed, update data-spot to match.
+ * The site cannot verify codes: ORVITO confirms each claim on WhatsApp.
+ */
+import { Picture } from 'astro:assets';
+import scene from '../../public/images/hunt/scene.jpg';
+import { findTheBar, isPending, whatsapp } from '../data/site';
+import { getPack, unitPrice } from '../data/products';
+import { buildContactLink } from '../lib/whatsapp';
+
+const pack = getPack(findTheBar.packId)!;
+const mrp = unitPrice(pack);
+const offerPrice = mrp === null ? null : (mrp * (100 - findTheBar.discountPercent)) / 100;
+const inr = (n: number) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(n);
+const terms = isPending(findTheBar.terms) ? null : findTheBar.terms;
+const number = isPending(whatsapp.number) ? '' : whatsapp.number.replace(/\D/g, '');
+---
+
+<dialog
+  class="hunt"
+  data-hunt
+  aria-labelledby="hunt-title"
+  aria-describedby="hunt-how"
+  data-spot="My4yNSw1OS4yMCw3LjgxLDYzLjEyLDUuNTMsNjEuMTYsMi44MQ=="
+  data-number={number}
+  data-prefix={findTheBar.codePrefix}
+  data-pack={`${pack.name}, ${pack.netQuantity}`}
+  data-mrp={mrp !== null ? inr(mrp) : ''}
+  data-offer={offerPrice !== null ? inr(offerPrice) : ''}
+  data-discount={findTheBar.discountPercent}
+>
+  <div class="hunt__inner">
+    <header class="hunt__head">
+      <div class="hunt__intro">
+        <span class="eyebrow">Find the bar · {findTheBar.discountPercent}% off a Box of 12</span>
+        <h2 id="hunt-title" class="hunt__title">Someone left an ORVITO bar <em>in this street.</em></h2>
+        <p class="hunt__lede">
+          Spot it and tap it, and a Box of 12 is yours at half price.
+        </p>
+      </div>
+      <button type="button" class="hunt__close" data-hunt-close aria-label="Close the game">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>
+      </button>
+    </header>
+
+    <div class="hunt__meta">
+      <p class="hunt__status" aria-live="polite" data-hunt-status>Misses: 0</p>
+      <p class="hunt__how" id="hunt-how">
+        <span class="hunt__how-fine">Move to look closer. Click to check a spot.</span>
+        <span class="hunt__how-touch">Swipe to explore. Tap to check a spot.</span>
+        <span class="visually-hidden">With a keyboard, use the arrow keys to move the lens and Enter to check.</span>
+      </p>
+    </div>
+
+    <div class="hunt__stage" data-hunt-stage tabindex="0" role="group" aria-label="The painting. Find the hidden ORVITO bar.">
+      <div class="hunt__scene" data-hunt-scene>
+        <Picture
+          src={scene}
+          formats={['avif', 'webp']}
+          widths={[800, 1200, 1600]}
+          sizes="(min-width: 64rem) 1100px, 240vw"
+          alt="A crowded street in old India: riders on horses, market stalls and shoppers. An ORVITO bar is hidden somewhere in it."
+          loading="lazy"
+          decoding="async"
+          draggable="false"
+        />
+        <span class="hunt__lens" data-hunt-lens aria-hidden="true"></span>
+        <span class="hunt__ring" data-hunt-ring aria-hidden="true"></span>
+      </div>
+    </div>
+
+    <p class="hunt__foot">
+      <span>{findTheBar.sceneCredit}.</span>
+      <span>Can't see the painting? <a href={buildContactLink('Hi ORVITO, I would like to know about the Find the bar offer.')} target="_blank" rel="noopener">Message us on WhatsApp</a>.</span>
+    </p>
+  </div>
+
+  <section class="hunt__win" data-hunt-win hidden aria-labelledby="hunt-win-title">
+    <span class="eyebrow hunt__win-eyebrow">You found it</span>
+    <h3 id="hunt-win-title" class="hunt__win-title">Half price on a <em>Box of 12.</em></h3>
+    {
+      mrp !== null && offerPrice !== null && (
+        <p class="hunt__win-price">
+          <s aria-label={`Was ${inr(mrp)}`}>{inr(mrp)}</s>
+          <strong>{inr(offerPrice)}</strong>
+        </p>
+      )
+    }
+    <p class="hunt__code">
+      Your code <strong data-hunt-code></strong>
+    </p>
+    <a class="btn btn--solid btn--lg hunt__claim" data-hunt-claim href="#" target="_blank" rel="noopener" data-cursor="Claim">
+      Claim on WhatsApp<span class="visually-hidden"> (opens WhatsApp)</span>
+    </a>
+    <p class="hunt__terms">
+      {terms ?? <span class="pending">[Offer terms to be confirmed: valid until, one claim per customer]</span>}
+      {' '}We confirm the offer on WhatsApp.
+    </p>
+  </section>
+</dialog>
+
+<script>
+  import { getSmoother } from '../scripts/motion';
+
+  type Spot = { x0: number; y0: number; x1: number; y1: number; cx: number; cy: number; w: number };
+  const ZOOM = 2.6;
+  const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const state = new WeakMap<HTMLDialogElement, { misses: number; found: boolean; kx: number; ky: number }>();
+
+  function readSpot(dialog: HTMLDialogElement): Spot {
+    const [x0, y0, x1, y1, cx, cy, w] = atob(dialog.dataset.spot ?? '').split(',').map(Number);
+    return { x0, y0, x1, y1, cx, cy, w };
+  }
+
+  function getState(dialog: HTMLDialogElement) {
+    let s = state.get(dialog);
+    if (!s) {
+      s = { misses: 0, found: false, kx: 50, ky: 50 };
+      state.set(dialog, s);
+    }
+    return s;
+  }
+
+  function codeFor(prefix: string) {
+    try {
+      const saved = sessionStorage.getItem('orvito-find-code');
+      if (saved) return saved;
+    } catch {}
+    const code = prefix + Math.random().toString(36).slice(2, 6).toUpperCase();
+    try {
+      sessionStorage.setItem('orvito-find-code', code);
+    } catch {}
+    return code;
+  }
+
+  function claimLink(dialog: HTMLDialogElement, code: string) {
+    const d = dialog.dataset;
+    const lines = [
+      `Hi ORVITO, I found the hidden bar on your website! I'd like to claim ${d.discount}% off one Box of 12.`,
+      '',
+      `Offer code: ${code}`,
+      `Pack: ${d.pack}`,
+      d.offer ? `Offer price: ${d.offer} (MRP ${d.mrp})` : '',
+      'Pincode: ',
+      'Name: ',
+      'Address: ',
+    ].filter((l, i) => l !== '' || i === 1);
+    return `https://wa.me/${d.number ?? ''}?text=${encodeURIComponent(lines.join('\n'))}`;
+  }
+
+  function setStatus(dialog: HTMLDialogElement, text: string) {
+    const status = dialog.querySelector<HTMLElement>('[data-hunt-status]');
+    if (status) status.textContent = text;
+  }
+
+  function moveLens(dialog: HTMLDialogElement, xPct: number, yPct: number) {
+    const scene = dialog.querySelector<HTMLElement>('[data-hunt-scene]')!;
+    const lens = dialog.querySelector<HTMLElement>('[data-hunt-lens]')!;
+    const img = scene.querySelector('img');
+    if (!img) return;
+    const w = scene.clientWidth;
+    const h = scene.clientHeight;
+    const r = lens.offsetWidth / 2;
+    const x = (xPct / 100) * w;
+    const y = (yPct / 100) * h;
+    lens.style.backgroundImage = `url("${img.currentSrc || img.src}")`;
+    lens.style.backgroundSize = `${w * ZOOM}px ${h * ZOOM}px`;
+    lens.style.backgroundPosition = `${-(x * ZOOM - r)}px ${-(y * ZOOM - r)}px`;
+    lens.style.transform = `translate3d(${x - r}px, ${y - r}px, 0)`;
+  }
+
+  function miss(dialog: HTMLDialogElement, xPct: number, yPct: number) {
+    const s = getState(dialog);
+    s.misses += 1;
+    const scene = dialog.querySelector<HTMLElement>('[data-hunt-scene]')!;
+    const mark = document.createElement('span');
+    mark.className = 'hunt__miss';
+    mark.style.left = `${xPct}%`;
+    mark.style.top = `${yPct}%`;
+    mark.setAttribute('aria-hidden', 'true');
+    scene.appendChild(mark);
+    mark.addEventListener('animationend', () => mark.remove(), { once: true });
+    if (reducedMotion()) setTimeout(() => mark.remove(), 700);
+
+    let text = `Not there. Misses: ${s.misses}`;
+    if (s.misses >= 8) text = `Misses: ${s.misses}. Hint: look left, near the copper pot.`;
+    else if (s.misses >= 4) text = `Misses: ${s.misses}. Hint: it's lying on something, in the shade.`;
+    setStatus(dialog, text);
+  }
+
+  function found(dialog: HTMLDialogElement, spot: Spot) {
+    const s = getState(dialog);
+    if (s.found) return;
+    s.found = true;
+    const scene = dialog.querySelector<HTMLElement>('[data-hunt-scene]')!;
+    const ring = dialog.querySelector<HTMLElement>('[data-hunt-ring]')!;
+    ring.style.left = `${spot.cx}%`;
+    ring.style.top = `${spot.cy}%`;
+    ring.style.width = `${spot.w * 2.4}%`;
+    scene.style.setProperty('--fx', `${spot.cx}%`);
+    scene.style.setProperty('--fy', `${spot.cy}%`);
+    scene.classList.add('is-found');
+    setStatus(dialog, `Found it in ${s.misses + 1} ${s.misses === 0 ? 'try' : 'tries'}.`);
+
+    const code = codeFor(dialog.dataset.prefix ?? 'ORV-FIND-');
+    dialog.querySelector<HTMLElement>('[data-hunt-code]')!.textContent = code;
+    dialog.querySelector<HTMLAnchorElement>('[data-hunt-claim]')!.href = claimLink(dialog, code);
+
+    const win = dialog.querySelector<HTMLElement>('[data-hunt-win]')!;
+    setTimeout(() => {
+      win.hidden = false;
+      dialog.querySelector<HTMLElement>('[data-hunt-claim]')?.focus({ preventScroll: true });
+    }, reducedMotion() ? 0 : 750);
+  }
+
+  function check(dialog: HTMLDialogElement, xPct: number, yPct: number) {
+    if (getState(dialog).found) return;
+    const spot = readSpot(dialog);
+    const hit = xPct >= spot.x0 && xPct <= spot.x1 && yPct >= spot.y0 && yPct <= spot.y1;
+    hit ? found(dialog, spot) : miss(dialog, xPct, yPct);
+  }
+
+  function pct(scene: HTMLElement, e: { clientX: number; clientY: number }) {
+    const r = scene.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 };
+  }
+
+  function open(dialog: HTMLDialogElement) {
+    if (dialog.open) return;
+    dialog.showModal();
+    document.documentElement.classList.add('hunt-open');
+    getSmoother()?.paused(true);
+    // Phones: start in the middle of the painting so there's exploring to do
+    const stage = dialog.querySelector<HTMLElement>('[data-hunt-stage]')!;
+    requestAnimationFrame(() => {
+      stage.scrollLeft = (stage.scrollWidth - stage.clientWidth) / 2;
+    });
+  }
+
+  function close(dialog: HTMLDialogElement) {
+    if (dialog.open) dialog.close();
+  }
+
+  // Delegated listeners on document, so they survive View Transition page swaps.
+  document.addEventListener('click', (e) => {
+    const target = e.target as Element | null;
+    const opener = target?.closest('[data-hunt-open]');
+    if (opener) {
+      const dialog = document.querySelector<HTMLDialogElement>('dialog[data-hunt]');
+      if (dialog) {
+        e.preventDefault();
+        open(dialog);
+      }
+      return;
+    }
+    const dialog = target?.closest<HTMLDialogElement>('dialog[data-hunt]');
+    if (!dialog) return;
+    if (target?.closest('[data-hunt-close]')) return close(dialog);
+    // a click on the dim backdrop lands on the dialog element itself
+    if (target === dialog) return close(dialog);
+    const scene = target?.closest<HTMLElement>('[data-hunt-scene]');
+    if (scene) {
+      const p = pct(scene, e as MouseEvent);
+      check(dialog, p.x, p.y);
+    }
+  });
+
+  // The floating HuntLauncher on other pages links to /?play=find-the-bar: open the game on arrival.
+  document.addEventListener('astro:page-load', () => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('play') !== 'find-the-bar') return;
+    url.searchParams.delete('play');
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+    const dialog = document.querySelector<HTMLDialogElement>('dialog[data-hunt]');
+    if (dialog) open(dialog);
+  });
+
+  document.addEventListener(
+    'close',
+    (e) => {
+      const dialog = e.target as HTMLElement;
+      if (!dialog.matches?.('dialog[data-hunt]')) return;
+      document.documentElement.classList.remove('hunt-open');
+      getSmoother()?.paused(false);
+    },
+    true
+  );
+
+  document.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const scene = (e.target as Element | null)?.closest<HTMLElement>('[data-hunt-scene]');
+    const dialog = scene?.closest<HTMLDialogElement>('dialog[data-hunt]');
+    if (!scene || !dialog) return;
+    const p = pct(scene, e);
+    getState(dialog).kx = p.x;
+    getState(dialog).ky = p.y;
+    moveLens(dialog, p.x, p.y);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const stage = (e.target as Element | null)?.closest?.('[data-hunt-stage]');
+    const dialog = stage?.closest<HTMLDialogElement>('dialog[data-hunt]');
+    if (!stage || !dialog) return;
+    const s = getState(dialog);
+    const step = e.shiftKey ? 0.6 : 2.5;
+    const moves: Record<string, [number, number]> = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+    };
+    if (moves[e.key]) {
+      e.preventDefault();
+      s.kx = Math.min(100, Math.max(0, s.kx + moves[e.key][0]));
+      s.ky = Math.min(100, Math.max(0, s.ky + moves[e.key][1]));
+      stage.classList.add('is-keyboard');
+      moveLens(dialog, s.kx, s.ky);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      stage.classList.add('is-keyboard');
+      check(dialog, s.kx, s.ky);
+    }
+  });
+</script>
+
+<style>
+  /* ---------- Dialog shell ---------- */
+  .hunt {
+    width: min(76rem, 94vw);
+    max-width: none;
+    max-height: 94dvh;
+    margin: auto; /* the global reset removes the dialog's default centring */
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    border-radius: 16px;
+    background: #0f0f0f;
+    color: var(--color-white);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .hunt::backdrop {
+    background: rgb(0 0 0 / 0.78);
+    backdrop-filter: blur(6px);
+  }
+  .hunt[open] { animation: hunt-in 240ms var(--ease-out); }
+  @keyframes hunt-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.985); }
+  }
+  :global(html.hunt-open) { overflow: hidden; }
+
+  .hunt__inner {
+    padding: clamp(1rem, 0.6rem + 1.6vw, 2rem);
+    display: grid;
+    gap: var(--space-4);
+  }
+  .hunt__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-5);
+  }
+  .hunt__intro .eyebrow { color: var(--color-honey); margin-bottom: var(--space-3); }
+  .hunt__title { font-size: clamp(1.875rem, 1.4rem + 1.9vw, 3rem); line-height: 1.02; max-width: 20ch; }
+  .hunt__lede { margin-top: var(--space-3); max-width: 46ch; }
+  .hunt__close {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    color: var(--color-white);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+    transition: box-shadow var(--duration-fast) var(--ease-out), transform 120ms var(--ease-out);
+  }
+  .hunt__close:active { transform: scale(0.97); }
+
+  .hunt__meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-5);
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    color: var(--color-text-muted);
+  }
+  .hunt__status { color: var(--color-white); }
+  .hunt__how-touch { display: none; }
+  @media (hover: none), (pointer: coarse) {
+    .hunt__how-fine { display: none; }
+    .hunt__how-touch { display: inline; }
+  }
+
+  /* ---------- The painting ---------- */
+  .hunt__stage {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    background: transparent;
+    outline-offset: 3px;
+    display: grid;
+    justify-items: center;
+  }
+  /* Desktop: as wide as fits, but never taller than the screen allows (1600 x 1044 painting) */
+  .hunt__scene {
+    width: min(100%, calc((94dvh - 19.5rem) * 1.5326));
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  .hunt__scene :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    -webkit-user-drag: none;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .hunt__scene { cursor: crosshair; }
+  }
+
+  /* Magnifying loupe: mouse and keyboard only */
+  .hunt__lens {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    pointer-events: none;
+    background-repeat: no-repeat;
+    box-shadow: 0 0 0 2px var(--color-honey), 0 12px 32px rgb(0 0 0 / 0.55);
+    opacity: 0;
+    transition: opacity 160ms var(--ease-out);
+    will-change: transform;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .hunt__scene:hover .hunt__lens { opacity: 1; }
+  }
+  .hunt__stage.is-keyboard:focus-visible .hunt__lens { opacity: 1; }
+  .is-found .hunt__lens { opacity: 0 !important; }
+
+  /* Miss marker: a ring that opens and fades */
+  .hunt__scene :global(.hunt__miss) {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    margin: -22px 0 0 -22px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.9);
+    pointer-events: none;
+    animation: hunt-miss 600ms var(--ease-out) forwards;
+  }
+  @keyframes hunt-miss {
+    from { transform: scale(0.4); opacity: 1; }
+    to { transform: scale(1.25); opacity: 0; }
+  }
+
+  /* Found: spotlight on the bar and a honey ring */
+  .hunt__scene::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at var(--fx, 50%) var(--fy, 50%), transparent 0 3.5%, rgb(0 0 0 / 0.62) 9%);
+    opacity: 0;
+    transition: opacity 500ms var(--ease-out);
+  }
+  .hunt__scene.is-found::after { opacity: 1; }
+  .hunt__ring {
+    position: absolute;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--color-honey), 0 0 24px rgb(201 147 47 / 0.6);
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .is-found .hunt__ring { animation: hunt-found 650ms var(--ease-out) forwards; }
+  @keyframes hunt-found {
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+
+  .hunt__foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-5);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+  }
+  .hunt__foot a { color: var(--color-white); text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ---------- Win panel ---------- */
+  .hunt__win {
+    position: absolute;
+    right: clamp(1rem, 2vw, 2rem);
+    bottom: clamp(1rem, 2vw, 2rem);
+    width: min(25rem, calc(100% - 2rem));
+    padding: var(--space-6);
+    border-radius: 14px;
+    background: rgb(12 12 12 / 0.95);
+    box-shadow: inset 0 0 0 1px rgb(201 147 47 / 0.55), 0 24px 60px rgb(0 0 0 / 0.6);
+    display: grid;
+    gap: var(--space-3);
+    justify-items: start;
+    z-index: 2;
+    animation: hunt-win 320ms var(--ease-out);
+  }
+  .hunt__win[hidden] { display: none; }
+  @keyframes hunt-win {
+    from { opacity: 0; transform: translateY(16px); }
+  }
+  .hunt__win-eyebrow { color: var(--color-honey); }
+  .hunt__win-title { font-size: clamp(1.75rem, 1.5rem + 1vw, 2.375rem); line-height: 1.05; }
+  .hunt__win-price {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .hunt__win-price s { color: var(--color-text-muted); }
+  .hunt__win-price strong { font-size: 1.75rem; font-weight: var(--weight-regular); letter-spacing: -0.03em; }
+  .hunt__code { font-family: var(--font-mono); font-size: var(--text-label); color: var(--color-text-muted); }
+  .hunt__code strong {
+    margin-left: var(--space-2);
+    padding: 0.2em 0.55em;
+    border-radius: 4px;
+    background: rgb(201 147 47 / 0.14);
+    color: var(--color-honey);
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.04em;
+  }
+  .hunt__claim { width: 100%; justify-content: center; }
+  .hunt__terms { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--color-text-muted); line-height: 1.6; }
+
+  @media (hover: hover) and (pointer: fine) {
+    .hunt__close:hover { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.7); }
+  }
+
+  /* ---------- Phones: full screen, painting shown large and swipeable ---------- */
+  @media (max-width: 47.99rem) {
+    .hunt {
+      width: 100vw;
+      height: 100dvh;
+      max-height: none;
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+    }
+    .hunt__stage {
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      margin-inline: calc(clamp(1rem, 0.6rem + 1.6vw, 2rem) * -1);
+      border-radius: 0;
+    }
+    .hunt__stage::-webkit-scrollbar { display: none; }
+    .hunt__stage { display: block; justify-items: start; }
+    /* sized to the screen height so the whole painting fits, then swiped sideways */
+    .hunt__scene { width: max(180%, calc((100dvh - 19rem) * 1.5326)); }
+    .hunt__win {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: auto;
+      border-radius: 16px 16px 0 0;
+      padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hunt[open], .hunt__win { animation: hunt-fade 200ms linear; }
+    @keyframes hunt-fade { from { opacity: 0; } }
+    .hunt__scene :global(.hunt__miss) { animation: hunt-fade-out 600ms linear forwards; }
+    @keyframes hunt-fade-out { from { opacity: 1; } to { opacity: 0; } }
+    .is-found .hunt__ring { animation: hunt-fade 200ms linear forwards; opacity: 1; transform: translate(-50%, -50%); }
+  }
+</style>

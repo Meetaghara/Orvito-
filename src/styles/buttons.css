@@ -1,0 +1,50 @@
+/* Buttons: shared by OrderButton and plain button links (e.g. Bulk & Gifting). */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-button);
+  font-family: var(--font-sans);
+  font-weight: var(--weight-regular);
+  font-size: var(--text-sm);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  transition: transform var(--duration-fast) var(--ease-out);
+  position: relative;
+  isolation: isolate;
+}
+.btn--sm { min-height: 40px; padding: 0 var(--space-4); }
+.btn--lg { min-height: 52px; padding: 0 var(--space-6); font-size: var(--text-base); }
+
+.btn--solid { background: var(--color-honey); color: var(--color-on-honey); font-weight: var(--weight-medium); }
+.btn--outline { color: var(--color-white); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.85); }
+
+/* Hover: a soft white wash fades in (opacity only) */
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgb(255 255 255 / 0.14);
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease;
+}
+.btn--outline::after { background: rgb(255 255 255 / 0.08); }
+.btn > * { position: relative; }
+
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover::after { opacity: 1; }
+}
+.btn:active { transform: scale(0.97); }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:active { transform: none; }
+}

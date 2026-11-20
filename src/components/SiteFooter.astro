@@ -1,0 +1,260 @@
+---
+/**
+ * Site footer, laid out like the RXBAR footer the agency chose (18 Nov 2026), in ORVITO black and white:
+ * three columns of links (the third ends with a honey "Order on WhatsApp" pill), a centred social row,
+ * the copyright line and a row of underlined policy links. Below that, the FSSAI business details
+ * the label rules require, in small mono type.
+ *
+ * Social links are text, not brand icons: drop the official Instagram/WhatsApp glyphs (from their
+ * brand resource pages) into public/icons/ if the client wants icons, and swap them in here.
+ */
+import OrderButton from './OrderButton.astro';
+import { business, footerColumns, isPending, legalLinks, productFacts, social, site, whatsapp } from '../data/site';
+import { buildContactLink } from '../lib/whatsapp';
+
+/** Pending values render as a clearly marked placeholder, never as a fake value. */
+const pending = (value: string | null) => (isPending(value) ? null : value);
+const care = business.customerCare;
+// FSSAI and GST details stay hidden until they are filled in src/data/site.ts.
+const fssaiNo = pending(business.fssaiLicence);
+const gstin = business.gstApplicable && business.gstin ? business.gstin : null;
+const socials = [
+  { label: 'Instagram', href: social.instagram },
+  { label: 'WhatsApp', href: buildContactLink() },
+].filter((s) => !isPending(s.href));
+---
+
+<footer class="site-footer">
+  <div class="container site-footer__inner">
+    <nav class="site-footer__columns" aria-label="Footer">
+      {
+        footerColumns.map((column, i) => (
+          <ul class="site-footer__col" role="list">
+            {column.map((link) => (
+              <li>
+                <a class="site-footer__link" href={link.href}>
+                  {link.label}
+                </a>
+              </li>
+            ))}
+            {i === footerColumns.length - 1 && (
+              <li class="site-footer__cta">
+                <OrderButton size="md" class="site-footer__pill" />
+              </li>
+            )}
+          </ul>
+        ))
+      }
+    </nav>
+
+    <ul class="site-footer__social" role="list" aria-label="ORVITO elsewhere">
+      {
+        socials.map((s) => (
+          <li>
+            <a class="site-footer__social-link" href={s.href} target="_blank" rel="noopener">
+              {s.label}
+              <span class="site-footer__arrow" aria-hidden="true">↗</span>
+              <span class="visually-hidden"> (opens in a new tab)</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="site-footer__copyright">© {new Date().getFullYear()} ORVITO · {site.footerLine}</p>
+
+    <ul class="site-footer__legal-links" role="list">
+      {
+        legalLinks.map((link) => (
+          <li>
+            <a href={link.href}>{link.label}</a>
+          </li>
+        ))
+      }
+    </ul>
+
+    <address class="site-footer__business">
+      <p>
+        {pending(business.legalName) ?? <span class="pending">[Registered business name]</span>}
+        {' · '}
+        {pending(business.address) ?? <span class="pending">[Registered address]</span>}
+      </p>
+      {
+        (fssaiNo || gstin) && (
+          <p>
+            {fssaiNo && <>FSSAI Lic. No. {fssaiNo}</>}
+            {fssaiNo && gstin && ' · '}
+            {gstin && <>GSTIN {gstin}</>}
+          </p>
+        )
+      }
+      <p>
+        Customer care: {pending(care.name) ?? <span class="pending">[Name]</span>}
+        {' · '}
+        <a href={`tel:${care.phone.replace(/[^\d+]/g, '')}`}>{care.phone}</a>
+        {' · '}
+        <a href={`mailto:${care.email}`}>{care.email}</a>
+        {' · '}
+        Replies {whatsapp.replyHours}
+      </p>
+      <div class="site-footer__marks">
+        {fssaiNo && business.fssaiLogo && <img src={business.fssaiLogo} alt="FSSAI" width="64" height="32" loading="lazy" />}
+        {
+          productFacts.vegMark && (
+            <svg class="veg-mark" viewBox="0 0 20 20" width="18" height="18" role="img" aria-label="Vegetarian">
+              <rect x="0.5" y="0.5" width="19" height="19" rx="1" fill="#fff" />
+              <rect x="2" y="2" width="16" height="16" fill="none" stroke="#008a3e" stroke-width="1.6" />
+              <circle cx="10" cy="10" r="4.5" fill="#008a3e" />
+            </svg>
+          )
+        }
+      </div>
+    </address>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: var(--border);
+    padding-top: clamp(4rem, 3rem + 4vw, 7rem);
+    padding-bottom: var(--space-8);
+  }
+  .site-footer__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  /* ---------- Three link columns ---------- */
+  .site-footer__columns {
+    width: 100%;
+    max-width: 62rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-7) var(--space-6);
+    text-align: left;
+  }
+  .site-footer__col {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    align-content: start;
+    gap: var(--space-5);
+  }
+  .site-footer__link {
+    font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+    font-weight: var(--weight-medium);
+    letter-spacing: -0.01em;
+    color: var(--color-white);
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+  .site-footer__cta { margin-top: calc(var(--space-2) * -1); }
+  .site-footer__cta :global(.site-footer__pill) {
+    border-radius: 999px;
+    padding-inline: var(--space-5);
+    font-size: var(--text-base);
+  }
+
+  /* ---------- Social row ---------- */
+  .site-footer__social {
+    list-style: none;
+    padding: 0;
+    margin-top: clamp(3rem, 2.5rem + 2vw, 4.5rem);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-3);
+  }
+  .site-footer__social-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 44px;
+    padding: 0 var(--space-5);
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.3);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--color-white);
+    transition: box-shadow var(--duration-fast) var(--ease-out);
+  }
+  .site-footer__arrow { font-size: 0.85em; opacity: 0.7; }
+
+  /* ---------- Copyright and policy links ---------- */
+  .site-footer__copyright {
+    margin-top: var(--space-7);
+    font-size: var(--text-sm);
+    color: var(--color-text);
+  }
+  .site-footer__legal-links {
+    list-style: none;
+    padding: 0;
+    margin-top: var(--space-5);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-3) var(--space-7);
+  }
+  .site-footer__legal-links a {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--color-white);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+    text-decoration-color: rgb(255 255 255 / 0.5);
+  }
+
+  /* ---------- Business details (FSSAI) ---------- */
+  .site-footer__business {
+    margin-top: var(--space-8);
+    padding-top: var(--space-6);
+    border-top: var(--border);
+    width: 100%;
+    max-width: 62rem;
+    display: grid;
+    gap: var(--space-1);
+    justify-items: center;
+    font-style: normal;
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+  .site-footer__business a {
+    color: var(--color-text);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: rgb(255 255 255 / 0.3);
+  }
+  .site-footer__marks {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    margin-top: var(--space-3);
+  }
+  .veg-mark { flex: none; }
+
+  @media (hover: hover) and (pointer: fine) {
+    .site-footer__link:hover { color: var(--color-honey); }
+    .site-footer__social-link:hover { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.85); }
+    .site-footer__legal-links a:hover { text-decoration-color: var(--color-white); }
+  }
+
+  /* Phones and small tablets already have the sticky "Order on WhatsApp" bar, so skip the pill */
+  @media (max-width: 56.24rem) {
+    .site-footer__cta { display: none; }
+  }
+
+  /* ---------- Phones: two columns, the help column full width below ---------- */
+  @media (max-width: 40rem) {
+    .site-footer__columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .site-footer__col:last-child {
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-5) var(--space-6);
+    }
+    .site-footer__legal-links { gap: var(--space-3) var(--space-5); }
+  }
+</style>

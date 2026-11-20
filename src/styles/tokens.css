@@ -1,0 +1,90 @@
+/* ORVITO design tokens. Values come from CLAUDE.md; change them here only. */
+:root {
+  /* Colour: brand */
+  --color-black: #0b0b0b;          /* site background */
+  --color-white: #ffffff;          /* headings */
+  --color-ivory: #f3ede2;          /* makhana ivory, optional soft background, sparingly */
+  --color-honey: #c8902e;          /* primary buttons and small highlights, under ~10% of a screen */
+  --color-honey-text: #8a5a12;     /* honey for text on light backgrounds */
+
+  /* Colour: roles */
+  --color-bg: var(--color-black);
+  --color-heading: var(--color-white);
+  --color-text: rgb(255 255 255 / 0.75);   /* body text */
+  --color-text-muted: rgb(255 255 255 / 0.6);
+  --color-surface: #151515;                /* cards */
+  --color-border: rgb(255 255 255 / 0.1);  /* 1px card borders, dividers */
+  --color-placeholder: #d9d9d9;            /* light grey product photo areas */
+  --color-placeholder-dark: #2a2a2a;       /* neutral grey image placeholders on black */
+  --color-on-honey: var(--color-black);    /* text on honey buttons and the honey band */
+  --color-focus: var(--color-honey);
+
+  /* Typography
+   * Instrument Serif: headings (400 only, never bold). Geist: body and interface.
+   * Geist Mono: label details. ORVITO Wordmark: the logo letters only. */
+  --font-serif: 'Instrument Serif', 'Geist', Georgia, serif; /* Geist covers the rupee sign if a heading ever has one */
+  --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --font-logo: 'ORVITO Wordmark', 'Instrument Serif', Georgia, serif;
+
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+
+  /* Fluid type scale (375px to 1440px). Serif is used at 24px and above only.
+   * Instrument Serif is narrow, so headings run about 15% larger than a typical serif. */
+  --text-xs: 0.8125rem;                                 /* 13px  small print */
+  --text-sm: 0.9375rem;                                 /* 15px  labels, nav */
+  --text-base: 1.0625rem;                               /* 17px  body */
+  --text-lg: clamp(1.125rem, 1.05rem + 0.35vw, 1.375rem);   /* 18-22px sub-lines */
+  --text-h4: clamp(1.75rem, 1.66rem + 0.38vw, 2rem);        /* 28-32px */
+  --text-h3: clamp(2rem, 1.78rem + 0.94vw, 2.625rem);       /* 32-42px */
+  --text-h2: clamp(2.5rem, 2.02rem + 2.07vw, 3.875rem);     /* 40-62px */
+  --text-h1: clamp(3.125rem, 2.03rem + 4.7vw, 6.25rem);     /* 50-100px  hero */
+  --text-label: 0.75rem;                                /* 12px  mono labels */
+
+  --leading-tight: 1;
+  --leading-heading: 1.08;
+  --leading-body: 1.6;
+  --tracking-wide: 0.08em;
+  --tracking-mono: 0.06em;
+
+  /* Spacing (4px base) */
+  --space-1: 0.25rem;   /* 4 */
+  --space-2: 0.5rem;    /* 8 */
+  --space-3: 0.75rem;   /* 12 */
+  --space-4: 1rem;      /* 16 */
+  --space-5: 1.5rem;    /* 24 */
+  --space-6: 2rem;      /* 32 */
+  --space-7: 3rem;      /* 48 */
+  --space-8: 4rem;      /* 64 */
+  --space-9: 6rem;      /* 96 */
+  --space-10: 8rem;     /* 128 */
+
+  /* Layout */
+  --container: 76rem;                                   /* ~1216px content width */
+  --container-narrow: 44rem;
+  --gutter: clamp(1.25rem, 0.8rem + 2vw, 2.5rem);       /* 20-40px side padding */
+  --section-space: clamp(5rem, 3.5rem + 6vw, 9rem);     /* vertical rhythm between sections */
+  --nav-height: 4.5rem;
+  --sticky-cta-height: 5rem;                            /* mobile bottom WhatsApp bar */
+
+  /* Shape */
+  --radius-card: 12px;
+  --radius-button: 6px;
+  --radius-pill: 999px;
+  --border: 1px solid var(--color-border);
+
+  /* Motion (tune with the animate / choreograph skills) */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 160ms;
+  --duration-base: 280ms;
+  --duration-slow: 600ms;
+
+  /* Layers */
+  --z-nav: 50;
+  --z-sticky-cta: 40;
+  --z-menu: 45;
+  --z-cursor: 100;
+}

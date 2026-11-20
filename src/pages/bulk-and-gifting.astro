@@ -1,0 +1,148 @@
+---
+/**
+ * Bulk & Gifting: who it is for, the terms the client confirmed (minimum order, gift boxes,
+ * lead time), the product sheet (pending) and the enquiry form, which opens WhatsApp.
+ * Bulk price stays "on enquiry" until the client confirms a figure (see bulk.pricePerBar).
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import BulkForm from '../components/BulkForm.astro';
+import { bulk, ordering, productFacts } from '../data/site';
+import { formatPrice } from '../data/products';
+
+const uses = [
+  { title: 'Hotels', line: 'For guest rooms, minibars and welcome trays.' },
+  { title: 'Offices', line: 'For team pantries, long meetings and off-sites.' },
+  { title: 'Gifting', line: 'For festive hampers, client gifts and weddings.' },
+  { title: 'Events', line: 'For conferences, marathons and treks.' },
+];
+
+const terms = [
+  { label: 'Minimum order', value: bulk.minimumOrderText },
+  { label: 'Price', value: bulk.pricePerBar !== null ? `${formatPrice(bulk.pricePerBar)} per bar` : bulk.priceText },
+  { label: 'Gift boxes', value: bulk.giftBoxes },
+  { label: 'Lead time', value: bulk.leadTime.charAt(0).toUpperCase() + bulk.leadTime.slice(1) },
+  { label: 'Delivery', value: ordering.deliveryAreas },
+  { label: 'Shelf life', value: productFacts.shelfLife.charAt(0).toUpperCase() + productFacts.shelfLife.slice(1) },
+];
+---
+
+<BaseLayout
+  title="Bulk & Gifting"
+  description="ORVITO bars for hotels, offices, events and gifting. Minimum order 200 bars, custom gift boxes on request. Send an enquiry on WhatsApp."
+>
+  <PageHero
+    eyebrow="Bulk & Gifting"
+    title="For hotels, offices and gifting."
+    italic="and gifting."
+    intro={`Sealed 60 g bars in quantities from ${bulk.minimumOrderText}, with custom gift boxes on request.`}
+  />
+
+  <section class="uses" aria-label="Who orders in bulk">
+    <div class="container">
+      <ul class="uses__grid" role="list" data-stagger>
+        {
+          uses.map((u) => (
+            <li class="use" data-stagger-item>
+              <span class="use__rule" aria-hidden="true" data-draw />
+              <h2 class="use__title">{u.title}</h2>
+              <p>{u.line}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <section class="enquiry section" id="enquiry" aria-labelledby="enquiry-title">
+    <div class="container enquiry__grid">
+      <aside class="enquiry__terms" aria-labelledby="terms-title">
+        <span class="eyebrow" data-reveal>The details</span>
+        <h2 id="terms-title" class="enquiry__heading" data-split>How bulk orders work</h2>
+        <dl class="terms" data-stagger>
+          {
+            terms.map((t) => (
+              <div class="terms__row" data-stagger-item>
+                <dt>{t.label}</dt>
+                <dd>{t.value}</dd>
+              </div>
+            ))
+          }
+        </dl>
+
+        <div class="sheet" data-reveal>
+          {
+            bulk.productSheet ? (
+              <a class="btn btn--outline" href={bulk.productSheet} download>
+                Download the product sheet (PDF)
+              </a>
+            ) : (
+              <>
+                <span class="btn btn--outline is-disabled" aria-disabled="true">
+                  Product sheet (PDF)
+                </span>
+                <p class="sheet__note">
+                  <span class="pending">[One-page product sheet coming soon]</span>
+                </p>
+              </>
+            )
+          }
+        </div>
+      </aside>
+
+      <div class="enquiry__form">
+        <span class="eyebrow" data-reveal>Enquire</span>
+        <h2 id="enquiry-title" class="enquiry__heading" data-split>Tell us what you need</h2>
+        <p class="enquiry__intro" data-reveal>
+          Fill this in and we'll reply on WhatsApp with a price and dates.
+        </p>
+        <div data-reveal>
+          <BulkForm />
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .uses__grid {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: var(--space-7) var(--space-6);
+    grid-template-columns: 1fr 1fr;
+  }
+  @media (min-width: 64rem) {
+    .uses__grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  .use__rule { display: block; height: 1px; background: rgb(255 255 255 / 0.25); margin-bottom: var(--space-5); }
+  .use__title { font-size: var(--text-h4); margin-bottom: var(--space-2); }
+  .use p { font-size: var(--text-sm); max-width: 26ch; }
+
+  .enquiry__grid {
+    display: grid;
+    gap: var(--space-9);
+  }
+  @media (min-width: 64rem) {
+    /* No position: sticky here: it does not work inside the ScrollSmoother content. */
+    .enquiry__grid { grid-template-columns: 0.8fr 1.2fr; gap: var(--space-9) var(--space-10); align-items: start; }
+  }
+  .enquiry .eyebrow { margin-bottom: var(--space-4); }
+  .enquiry__heading { font-size: var(--text-h2); margin-bottom: var(--space-6); }
+  .enquiry__intro { margin-top: calc(var(--space-4) * -1); margin-bottom: var(--space-6); }
+
+  .terms { border-top: var(--border); }
+  .terms__row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-5);
+    padding: var(--space-4) 0;
+    border-bottom: var(--border);
+  }
+  .terms__row dt { font-family: var(--font-mono); font-size: var(--text-label); letter-spacing: var(--tracking-mono); text-transform: uppercase; color: var(--color-text-muted); padding-top: 0.2em; }
+  .terms__row dd { color: var(--color-white); text-align: right; }
+
+  .sheet { margin-top: var(--space-6); display: grid; gap: var(--space-3); justify-items: start; }
+  .sheet .is-disabled { opacity: 0.45; cursor: not-allowed; }
+  .sheet__note { font-size: var(--text-xs); }
+</style>
